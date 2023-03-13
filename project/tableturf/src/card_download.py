@@ -27,20 +27,22 @@ def data_format(data:dict):
   for i in range(MAX_H):
     for j in range(MAX_W):
       card_format[i][j] = card_format[i+up_h][j+left_w] if (i+up_h < MAX_H and j+left_w < MAX_W) else 0
-  return data['Number'],h,w,card_format,data['SpecialCost']
-
-cards_data_format = [data_format(card_data) for card_data in cards_data]
-with open("Card_Database.hpp",mode='w') as f:
-  print('#include "Card.hpp"',file=f)
+  return data['Number'],h,w,data['Square'].count('Fill')+data['Square'].count('Special'),card_format,data['SpecialCost']
+#先頭にダミーを加える(0-indexed to 1-indexed)
+cards_data_format = [(0,0,0,0,[[0]*8 for _ in range(8)],0)]+[data_format(card_data) for card_data in cards_data]
+cards_data_format.sort()
+with open("card_database.hpp",mode='w') as f:
+  print('#include "card.hpp"',file=f)
   N_card = len(cards_data)
   print(f'constexpr int N_card = {N_card};',file=f)
-  print('constexpr short Cards_Cell[N_card][8][8] = {',file=f)
-  for card_data_format in cards_data_format:
-    print(str(card_data_format[3]).replace('[','{').replace(']','}').replace(' ','')+",",file=f)
+  print('constexpr short cards_cell[N_card+1][Card::MAX_H][Card::MAX_W] = {',file=f)
+  #リストの[]を{}に変更し、空白を無くす
+  for id,h,w,N_square,card_cell,SP_cost in cards_data_format:
+    print(str(card_cell).replace('[','{').replace(']','}').replace(' ','')+",",file=f)
   print('};',file=f)
-  print('constexpr Card Cards[N_card] = {',file=f)
-  for i,(id,h,w,card_cell,sp_cost) in enumerate(cards_data_format):
-    print(f'{"{"}{id},{h},{w},Cards_Cell[{i}],{sp_cost}{"}"},',file=f)
+  print('constexpr Card cards[N_card+1] = {',file=f)
+  for i,(id,h,w,N_square,card_cell,SP_cost) in enumerate(cards_data_format):
+    print(f'{"{"}{h},{w},{N_square},cards_cell[{i}],{SP_cost}{"}"},',file=f)
   print('};',file=f)
 
 
