@@ -1,5 +1,15 @@
+#pragma once
 #include "stage.hpp"
-constexpr Stage<26,9,234> Main_Street{(const bool[26][9]){
+#include <iostream>
+using Main_Street = Stage<0,26,9,234>;
+using Thunder_Point = Stage<1,22,16,240>;
+using X_Marks_the_Garden = Stage<2,23,19,245>;
+using Square_Squared = Stage<3,15,15,225>;
+using Lakefront_Property = Stage<4,16,16,240>;
+using Double_Gemini = Stage<5,29,19,321>;
+using River_Drift = Stage<6,25,17,245>;
+using Box_Seats = Stage<7,10,10,100>;
+constexpr bool Main_Street_exists_square[26][9] = {
 {1,1,1,1,1,1,1,1,1},
 {1,1,1,1,1,1,1,1,1},
 {1,1,1,1,1,1,1,1,1},
@@ -26,8 +36,8 @@ constexpr Stage<26,9,234> Main_Street{(const bool[26][9]){
 {1,1,1,1,1,1,1,1,1},
 {1,1,1,1,1,1,1,1,1},
 {1,1,1,1,1,1,1,1,1},
-}};
-constexpr Stage<22,16,240> Thunder_Point{(const bool[22][16]){
+};
+constexpr bool Thunder_Point_exists_square[22][16] = {
 {0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1},
 {0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1},
 {0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1},
@@ -50,8 +60,8 @@ constexpr Stage<22,16,240> Thunder_Point{(const bool[22][16]){
 {1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0},
 {1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0},
 {1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0},
-}};
-constexpr Stage<23,19,245> X_Marks_the_Garden{(const bool[23][19]){
+};
+constexpr bool X_Marks_the_Garden_exists_square[23][19] = {
 {0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0},
 {0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0},
 {0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0},
@@ -75,8 +85,8 @@ constexpr Stage<23,19,245> X_Marks_the_Garden{(const bool[23][19]){
 {0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0},
 {0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0},
 {0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0},
-}};
-constexpr Stage<15,15,225> Square_Squared{(const bool[15][15]){
+};
+constexpr bool Square_Squared_exists_square[15][15] = {
 {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
 {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
 {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
@@ -92,8 +102,8 @@ constexpr Stage<15,15,225> Square_Squared{(const bool[15][15]){
 {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
 {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
 {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
-}};
-constexpr Stage<16,16,240> Lakefront_Property{(const bool[16][16]){
+};
+constexpr bool Lakefront_Property_exists_square[16][16] = {
 {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
 {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
 {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
@@ -110,8 +120,8 @@ constexpr Stage<16,16,240> Lakefront_Property{(const bool[16][16]){
 {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
 {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
 {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
-}};
-constexpr Stage<29,19,321> Double_Gemini{(const bool[29][19]){
+};
+constexpr bool Double_Gemini_exists_square[29][19] = {
 {0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0},
 {0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0},
 {0,0,0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,0,0},
@@ -141,8 +151,8 @@ constexpr Stage<29,19,321> Double_Gemini{(const bool[29][19]){
 {0,0,0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,0,0},
 {0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0},
 {0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0},
-}};
-constexpr Stage<25,17,245> River_Drift{(const bool[25][17]){
+};
+constexpr bool River_Drift_exists_square[25][17] = {
 {0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1},
 {0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1},
 {0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1},
@@ -168,8 +178,8 @@ constexpr Stage<25,17,245> River_Drift{(const bool[25][17]){
 {1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0},
 {1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0},
 {1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0},
-}};
-constexpr Stage<10,10,100> Box_Seats{(const bool[10][10]){
+};
+constexpr bool Box_Seats_exists_square[10][10] = {
 {1,1,1,1,1,1,1,1,1,1},
 {1,1,1,1,1,1,1,1,1,1},
 {1,1,1,1,1,1,1,1,1,1},
@@ -180,7 +190,18 @@ constexpr Stage<10,10,100> Box_Seats{(const bool[10][10]){
 {1,1,1,1,1,1,1,1,1,1},
 {1,1,1,1,1,1,1,1,1,1},
 {1,1,1,1,1,1,1,1,1,1},
-}};
-int main(){
-  
-}
+};
+//この構造体のインスタンスのコンストラクタを前計算します(コンパイル時計算は出来ませんでした...)
+struct Initializer{
+  constexpr Initializer(){
+    Main_Street::initialize(Main_Street_exists_square,22,4,3,4);
+    Thunder_Point::initialize(Thunder_Point_exists_square,18,3,3,12);
+    X_Marks_the_Garden::initialize(X_Marks_the_Garden_exists_square,19,9,3,9);
+    Square_Squared::initialize(Square_Squared_exists_square,11,3,3,11);
+    Lakefront_Property::initialize(Lakefront_Property_exists_square,12,3,3,12);
+    Double_Gemini::initialize(Double_Gemini_exists_square,23,9,5,9);
+    River_Drift::initialize(River_Drift_exists_square,21,3,3,13);
+    Box_Seats::initialize(Box_Seats_exists_square,7,2,2,7);
+  }
+};
+Initializer initializer;
