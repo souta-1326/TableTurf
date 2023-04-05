@@ -191,7 +191,7 @@ constexpr bool Box_Seats_exists_square[10][10] = {
 {1,1,1,1,1,1,1,1,1,1},
 {1,1,1,1,1,1,1,1,1,1},
 };
-//この構造体のインスタンスのコンストラクタを前計算します(コンパイル時計算は出来ませんでした...)
+//この構造体のインスタンスのコンストラクタを利用して前計算します(コンパイル時計算は出来ませんでした...)
 struct Initializer{
   constexpr Initializer(){
     Main_Street::initialize(Main_Street_exists_square,22,4,3,4);
