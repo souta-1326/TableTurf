@@ -1,3 +1,4 @@
+#pragma once
 #include "card.hpp"
 constexpr int N_card = 198;
 constexpr short cards_cell[N_card+1][Card::MAX_H][Card::MAX_W] = {
