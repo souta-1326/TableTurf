@@ -15,6 +15,10 @@ public:
   //N_square*4は理論上の置き方の方法の数の最大値
   static int card_status_size[N_card+1];
   static std::tuple<int,int,int> card_status[N_card+1][N_square*4];
+  //向きと左上の位置からidを復元(ステージからはみ出す場合は-1)
+  static int card_direction_and_place_to_id[N_card+1][4][H][W];
+  //各カードのマスが覆うマス目
+  static std::bitset<N_square> card_covered_square[N_card+1][N_square*4];
   //各カードの通常マスが覆うマス目
   static std::bitset<N_square> card_covered_square_normal[N_card+1][N_square*4];
   //各カードのSPマスが覆うマス目
@@ -43,6 +47,8 @@ private:
 //static変数の初期化
 template<int ID,int H,int W,int N_square> int Stage<ID,H,W,N_square>::card_status_size[N_card+1] = {};
 template<int ID,int H,int W,int N_square> std::tuple<int,int,int> Stage<ID,H,W,N_square>::card_status[N_card+1][N_square*4] = {};
+template<int ID,int H,int W,int N_square> int Stage<ID,H,W,N_square>::card_direction_and_place_to_id[N_card+1][4][H][W] = {};
+template<int ID,int H,int W,int N_square> std::bitset<N_square> Stage<ID,H,W,N_square>::card_covered_square[N_card+1][N_square*4] = {};
 template<int ID,int H,int W,int N_square> std::bitset<N_square> Stage<ID,H,W,N_square>::card_covered_square_normal[N_card+1][N_square*4] = {};
 template<int ID,int H,int W,int N_square> std::bitset<N_square> Stage<ID,H,W,N_square>::card_covered_square_SP[N_card+1][N_square*4] = {};
 template<int ID,int H,int W,int N_square> bool Stage<ID,H,W,N_square>::exists_square[H][W] = {};
@@ -108,55 +114,84 @@ template<int ID,int H,int W,int N_square> constexpr bool Stage<ID,H,W,N_square>:
   return true;
 }
 template<int ID,int H,int W,int N_square> constexpr void Stage<ID,H,W,N_square>::card_to_bitset_R0(int card_id,int card_pos_H,int card_pos_W){
+  //変更したいbitset
+  std::bitset<N_square> &target = card_covered_square[card_id][card_status_size[card_id]-1];
   std::bitset<N_square> &target_normal = card_covered_square_normal[card_id][card_status_size[card_id]-1];
   std::bitset<N_square> &target_SP = card_covered_square_SP[card_id][card_status_size[card_id]-1];
   for(int i=0;i<cards[card_id].H;i++){
     for(int j=0;j<cards[card_id].W;j++){
       if(cards[card_id].R0[i][j]){
         assert(exists_square[card_pos_H+i][card_pos_W+j]);
+        //targetはマスの種類関係なし
+        target[place_to_order[card_pos_H+i][card_pos_W+j]] = true;
         //(i,j)がSPマスならtarget_SP,通常マスならtarget_normal
-        (i==cards[card_id].SP_H && j==cards[card_id].SP_W ? target_SP:target_normal)[place_to_order[card_pos_H+i][card_pos_W+j]] = true;
+        (i==cards[card_id].R0_SP_H && j==cards[card_id].R0_SP_W ? target_SP:target_normal)[place_to_order[card_pos_H+i][card_pos_W+j]] = true;
       }
     }
   }
 }
 template<int ID,int H,int W,int N_square> constexpr void Stage<ID,H,W,N_square>::card_to_bitset_R90(int card_id,int card_pos_H,int card_pos_W){
+  //変更したいbitset
+  std::bitset<N_square> &target = card_covered_square[card_id][card_status_size[card_id]-1];
   std::bitset<N_square> &target_normal = card_covered_square_normal[card_id][card_status_size[card_id]-1];
   std::bitset<N_square> &target_SP = card_covered_square_SP[card_id][card_status_size[card_id]-1];
   for(int i=0;i<cards[card_id].W;i++){
     for(int j=0;j<cards[card_id].H;j++){
       if(cards[card_id].R90[i][j]){
         assert(exists_square[card_pos_H+i][card_pos_W+j]);
-        (i==cards[card_id].SP_H && j==cards[card_id].SP_W ? target_SP:target_normal)[place_to_order[card_pos_H+i][card_pos_W+j]] = true;
+        //targetはマスの種類関係なし
+        target[place_to_order[card_pos_H+i][card_pos_W+j]] = true;
+        //(i,j)がSPマスならtarget_SP,通常マスならtarget_normal
+        (i==cards[card_id].R90_SP_H && j==cards[card_id].R90_SP_W ? target_SP:target_normal)[place_to_order[card_pos_H+i][card_pos_W+j]] = true;
       }
     }
   }
 }
 template<int ID,int H,int W,int N_square> constexpr void Stage<ID,H,W,N_square>::card_to_bitset_R180(int card_id,int card_pos_H,int card_pos_W){
+  //変更したいbitset
+  std::bitset<N_square> &target = card_covered_square[card_id][card_status_size[card_id]-1];
   std::bitset<N_square> &target_normal = card_covered_square_normal[card_id][card_status_size[card_id]-1];
   std::bitset<N_square> &target_SP = card_covered_square_SP[card_id][card_status_size[card_id]-1];
   for(int i=0;i<cards[card_id].H;i++){
     for(int j=0;j<cards[card_id].W;j++){
       if(cards[card_id].R180[i][j]){
         assert(exists_square[card_pos_H+i][card_pos_W+j]);
-        (i==cards[card_id].SP_H && j==cards[card_id].SP_W ? target_SP:target_normal)[place_to_order[card_pos_H+i][card_pos_W+j]] = true;
+        //targetはマスの種類関係なし
+        target[place_to_order[card_pos_H+i][card_pos_W+j]] = true;
+        //(i,j)がSPマスならtarget_SP,通常マスならtarget_normal
+        (i==cards[card_id].R180_SP_H && j==cards[card_id].R180_SP_W ? target_SP:target_normal)[place_to_order[card_pos_H+i][card_pos_W+j]] = true;
       }
     }
   }
 }
 template<int ID,int H,int W,int N_square> constexpr void Stage<ID,H,W,N_square>::card_to_bitset_R270(int card_id,int card_pos_H,int card_pos_W){
+  //変更したいbitset
+  std::bitset<N_square> &target = card_covered_square[card_id][card_status_size[card_id]-1];
   std::bitset<N_square> &target_normal = card_covered_square_normal[card_id][card_status_size[card_id]-1];
   std::bitset<N_square> &target_SP = card_covered_square_SP[card_id][card_status_size[card_id]-1];
   for(int i=0;i<cards[card_id].W;i++){
     for(int j=0;j<cards[card_id].H;j++){
       if(cards[card_id].R270[i][j]){
         assert(exists_square[card_pos_H+i][card_pos_W+j]);
-        (i==cards[card_id].SP_H && j==cards[card_id].SP_W ? target_SP:target_normal)[place_to_order[card_pos_H+i][card_pos_W+j]] = true;
+        //targetはマスの種類関係なし
+        target[place_to_order[card_pos_H+i][card_pos_W+j]] = true;
+        //(i,j)がSPマスならtarget_SP,通常マスならtarget_normal
+        (i==cards[card_id].R270_SP_H && j==cards[card_id].R270_SP_W ? target_SP:target_normal)[place_to_order[card_pos_H+i][card_pos_W+j]] = true;
       }
     }
   }
 }
 template<int ID,int H,int W,int N_square> constexpr void Stage<ID,H,W,N_square>::card_setting(){
+  //card_direction_and_place_to_idを全部-1で埋める
+  for(int i=1;i<=N_card;i++){
+    for(int j=0;j<4;j++){
+      for(int k=0;k<H;k++){
+        for(int l=0;l<W;l++){
+          card_direction_and_place_to_id[i][j][k][l] = -1;
+        }
+      }
+    }
+  }
   for(int i=1;i<=N_card;i++){
     //R0
     for(int j=0;j<=H-cards[i].H;j++){
@@ -165,6 +200,7 @@ template<int ID,int H,int W,int N_square> constexpr void Stage<ID,H,W,N_square>:
         if(card_is_on_board_R0(i,j,k)){
           card_status_size[i]++;
           card_status[i][card_status_size[i]-1] = {0,j,k};
+          card_direction_and_place_to_id[i][0][j][k] = card_status_size[i]-1;
           card_to_bitset_R0(i,j,k);
         }
       }
@@ -176,6 +212,7 @@ template<int ID,int H,int W,int N_square> constexpr void Stage<ID,H,W,N_square>:
         if(card_is_on_board_R90(i,j,k)){
           card_status_size[i]++;
           card_status[i][card_status_size[i]-1] = {1,j,k};
+          card_direction_and_place_to_id[i][1][j][k] = card_status_size[i]-1;
           card_to_bitset_R90(i,j,k);
         }
       }
@@ -187,6 +224,7 @@ template<int ID,int H,int W,int N_square> constexpr void Stage<ID,H,W,N_square>:
         if(card_is_on_board_R180(i,j,k)){
           card_status_size[i]++;
           card_status[i][card_status_size[i]-1] = {2,j,k};
+          card_direction_and_place_to_id[i][2][j][k] = card_status_size[i]-1;
           card_to_bitset_R180(i,j,k);
         }
       }
@@ -198,6 +236,7 @@ template<int ID,int H,int W,int N_square> constexpr void Stage<ID,H,W,N_square>:
         if(card_is_on_board_R270(i,j,k)){
           card_status_size[i]++;
           card_status[i][card_status_size[i]-1] = {3,j,k};
+          card_direction_and_place_to_id[i][3][j][k] = card_status_size[i]-1;
           card_to_bitset_R270(i,j,k);
         }
       }
