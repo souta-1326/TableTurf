@@ -31,10 +31,17 @@ public:
   //(左上、上、右上、左、右、左下、下、右下)[i]がブロックまたは盤面外であるか
   std::bitset<N_square> is_there_a_block_nearby[8];
   Board();
+  //カードの置き方が合法かどうか
   bool is_valid_placement(const bool is_my_placement,const int card_id,const int card_direction,const int card_pos_H,const int card_pos_W,const bool is_pass,const bool is_SP_attack) const;
   bool is_valid_placement(const bool is_my_placement,const int card_id,const int status_id,const bool is_SP_attack) const;
-  void put_both_cards_without_validation(int my_card_id,int my_card_direction,int my_card_pos_H,int my_card_pos_W,bool is_my_pass,bool is_my_SP_attack,int opponent_card_id,int opponent_card_direction,int opponent_card_pos_H,int opponent_card_pos_W,bool is_opponent_pass,bool is_opponent_SP_attack);
-  void put_both_cards_without_validation(int my_card_id,int my_status_id,bool is_my_SP_attack,int opponent_card_id,int opponent_status_id,bool is_opponent_SP_attack);
+  //両方のプレイヤーのカードを置く
+  void put_both_cards_without_validation(const int my_card_id,const int my_card_direction,const int my_card_pos_H,const int my_card_pos_W,const bool is_my_pass,const bool is_my_SP_attack,const int opponent_card_id,const int opponent_card_direction,const int opponent_card_pos_H,const int opponent_card_pos_W,const bool is_opponent_pass,const bool is_opponent_SP_attack);
+  void put_both_cards_without_validation(const int my_card_id,const int my_status_id,const bool is_my_SP_attack,const int opponent_card_id,const int opponent_status_id,const bool is_opponent_SP_attack);
+  //片方のプレイヤーのカードを置く(ビジュアライザ専用)
+  void put_my_card_without_validation(const int my_card_id,const int my_card_direction,const int my_card_pos_H,const int my_card_pos_W,const bool is_my_pass,const bool is_my_SP_attack);
+  void put_my_card_without_validation(const int my_card_id,const int my_status_id,const bool is_my_SP_attack);
+  void put_opponent_card_without_validation(const int opponent_card_id,const int opponent_card_direction,const int opponent_card_pos_H,const int opponent_card_pos_W,const bool is_opponent_pass,const bool is_opponent_SP_attack);
+  void put_opponent_card_without_validation(const int opponent_card_id,const int opponent_status_id,const bool is_opponent_SP_attack);
 };
 template<class stage> Board<stage>::Board():current_turn(1),my_SP_point(0),opponent_SP_point(0),my_SP_point_used(0),opponent_SP_point_used(0),my_pass_time(0),opponent_pass_time(0){
   //初期盤面の生成(最初のSPマスを設置)
@@ -67,13 +74,14 @@ template<class stage> bool Board<stage>::is_valid_placement(const bool is_my_pla
   (is_SP_attack ? my_square_SP:my_square):
   (is_SP_attack ? opponent_square_SP:opponent_square))).any();
 }
-template<class stage> void Board<stage>::put_both_cards_without_validation(int my_card_id,int my_card_direction,int my_card_pos_H,int my_card_pos_W,bool is_my_pass,bool is_my_SP_attack,int opponent_card_id,int opponent_card_direction,int opponent_card_pos_H,int opponent_card_pos_W,bool is_opponent_pass,bool is_opponent_SP_attack){
+template<class stage> void Board<stage>::put_both_cards_without_validation(const int my_card_id,const int my_card_direction,const int my_card_pos_H,const int my_card_pos_W,const bool is_my_pass,const bool is_my_SP_attack,const int opponent_card_id,const int opponent_card_direction,const int opponent_card_pos_H,const int opponent_card_pos_W,const bool is_opponent_pass,const bool is_opponent_SP_attack){
   int my_status_id = (is_my_pass ? -1:stage::card_direction_and_place_to_id[my_card_id][my_card_direction][my_card_pos_H][my_card_pos_W]);
   int opponent_status_id = (is_opponent_pass ? -1:stage::card_direction_and_place_to_id[opponent_card_id][opponent_card_direction][opponent_card_pos_H][opponent_card_pos_W]);
-  put_both_cards_without_validation(my_card_id,my_status_id,is_my_SP_attack,
+  put_both_cards_without_validation(
+  my_card_id,my_status_id,is_my_SP_attack,
   opponent_card_id,opponent_status_id,is_opponent_SP_attack);
 }
-template<class stage> void Board<stage>::put_both_cards_without_validation(int my_card_id,int my_status_id,bool is_my_SP_attack,int opponent_card_id,int opponent_status_id,bool is_opponent_SP_attack){
+template<class stage> void Board<stage>::put_both_cards_without_validation(const int my_card_id,const int my_status_id,const bool is_my_SP_attack,const int opponent_card_id,const int opponent_status_id,const bool is_opponent_SP_attack){
   //my_status_id,opponent_status_idが-1の時はパス
   const std::bitset<N_square> &my_card_covered_square = stage::card_covered_square[my_card_id][my_status_id];
   const std::bitset<N_square> &my_card_covered_square_normal = stage::card_covered_square_normal[my_card_id][my_status_id];
@@ -173,9 +181,8 @@ template<class stage> void Board<stage>::put_both_cards_without_validation(int m
     added_square = my_card_covered_square_normal&(~removed_square);
     my_square |= added_square;
   }
-  
   //8方向全てに囲まれているスペシャルマスを取得する
-  //まずs_there_a_block_nearbyを更新
+  //まずis_there_a_block_nearbyを更新
   if(my_status_id != -1){
     for(int i=0;i<8;i++) is_there_a_block_nearby[i] |= stage::card_shifted_square[my_card_id][my_status_id][i];
   }
@@ -199,4 +206,86 @@ template<class stage> void Board<stage>::put_both_cards_without_validation(int m
   opponent_SP_point = opponent_square_SP_burning.count()+opponent_pass_time-opponent_SP_point_used;
   //ターン数を更新
   current_turn++;
+}
+template<class stage> void Board<stage>::put_my_card_without_validation(const int my_card_id,const int my_card_direction,const int my_card_pos_H,const int my_card_pos_W,const bool is_my_pass,const bool is_my_SP_attack){
+  int my_status_id = (is_my_pass ? -1:stage::card_direction_and_place_to_id[my_card_id][my_card_direction][my_card_pos_H][my_card_pos_W]);
+  put_my_card_without_validation(my_card_id,my_status_id,is_my_SP_attack);
+}
+template<class stage> void Board<stage>::put_my_card_without_validation(const int my_card_id,const int my_status_id,const bool is_my_SP_attack){
+  const std::bitset<N_square> &my_card_covered_square = stage::card_covered_square[my_card_id][my_status_id];
+  const std::bitset<N_square> &my_card_covered_square_SP = stage::card_covered_square_SP[my_card_id][my_status_id];
+  //SPアタックの時の前処理
+  if(is_my_SP_attack){
+    my_SP_point_used += cards[my_card_id].SP_cost;
+    //一度SPマスを取ったら取り返されることはないので、opponent_squareだけ塗り返す
+    opponent_square &= ~my_card_covered_square;
+  }
+  //パスの時の処理
+  if(my_status_id == -1){
+    my_pass_time++;
+  }
+  //パスしていない時の処理
+  else{
+    my_square_SP |= my_card_covered_square_SP;
+    my_square |= my_card_covered_square;
+  }
+  //8方向全てに囲まれているスペシャルマスを取得する
+  //まずis_there_a_block_nearbyを更新
+  if(my_status_id != -1){
+    for(int i=0;i<8;i++) is_there_a_block_nearby[i] |= stage::card_shifted_square[my_card_id][my_status_id][i];
+  }
+  //8方向全て囲まれているかを表すbitsetを取得する
+  static std::bitset<N_square> are_there_8_blocks_nearby;
+  are_there_8_blocks_nearby = is_there_a_block_nearby[0];
+  for(int i=1;i<8;i++) are_there_8_blocks_nearby &= is_there_a_block_nearby[i];
+  //my_square_SP,opponent_square_SPと照合
+  my_square_SP_burning = my_square_SP&are_there_8_blocks_nearby;
+  opponent_square_SP_burning = opponent_square_SP&are_there_8_blocks_nearby;
+  //all_squareを更新
+  all_square = my_square|opponent_square|wall_square;
+
+  //SPポイントを更新
+  my_SP_point = my_square_SP_burning.count()+my_pass_time-my_SP_point_used;
+  opponent_SP_point = opponent_square_SP_burning.count()+opponent_pass_time-opponent_SP_point_used;
+}
+template<class stage> void Board<stage>::put_opponent_card_without_validation(const int opponent_card_id,const int opponent_card_direction,const int opponent_card_pos_H,const int opponent_card_pos_W,const bool is_opponent_pass,const bool is_opponent_SP_attack){
+  int opponent_status_id = (is_opponent_pass ? -1:stage::card_direction_and_place_to_id[opponent_card_id][opponent_card_direction][opponent_card_pos_H][opponent_card_pos_W]);
+  put_opponent_card_without_validation(opponent_card_id,opponent_status_id,is_opponent_SP_attack);
+}
+template<class stage> void Board<stage>::put_opponent_card_without_validation(const int opponent_card_id,const int opponent_status_id,const bool is_opponent_SP_attack){
+  const std::bitset<N_square> &opponent_card_covered_square = stage::card_covered_square[opponent_card_id][opponent_status_id];
+  const std::bitset<N_square> &opponent_card_covered_square_SP = stage::card_covered_square_SP[opponent_card_id][opponent_status_id];
+  //SPアタックの時の前処理
+  if(is_opponent_SP_attack){
+    opponent_SP_point_used += cards[opponent_card_id].SP_cost;
+    //一度SPマスを取ったら取り返されることはないので、my_squareだけ塗り替えす
+    my_square &= ~opponent_card_covered_square;
+  }
+  //パスの時の処理
+  if(opponent_status_id == -1){
+    opponent_pass_time++;
+  }
+  //パスしていない時の処理
+  else{
+    opponent_square_SP |= opponent_card_covered_square_SP;
+    opponent_square |= opponent_card_covered_square;
+  }
+  //8方向全てに囲まれているスペシャルマスを取得する
+  //まずis_there_a_block_nearbyを更新
+  if(opponent_status_id != -1){
+    for(int i=0;i<8;i++) is_there_a_block_nearby[i] |= stage::card_shifted_square[opponent_card_id][opponent_status_id][i];
+  }
+  //8方向全て囲まれているかを表すbitsetを取得する
+  static std::bitset<N_square> are_there_8_blocks_nearby;
+  are_there_8_blocks_nearby = is_there_a_block_nearby[0];
+  for(int i=1;i<8;i++) are_there_8_blocks_nearby &= is_there_a_block_nearby[i];
+  //my_square_SP,opponent_square_SPと照合
+  my_square_SP_burning = my_square_SP&are_there_8_blocks_nearby;
+  opponent_square_SP_burning = opponent_square_SP&are_there_8_blocks_nearby;
+  //all_squareを更新
+  all_square = my_square|opponent_square|wall_square;
+
+  //SPポイントを更新
+  my_SP_point = my_square_SP_burning.count()+my_pass_time-my_SP_point_used;
+  opponent_SP_point = opponent_square_SP_burning.count()+opponent_pass_time-opponent_SP_point_used;
 }
