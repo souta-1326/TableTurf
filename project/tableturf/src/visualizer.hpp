@@ -13,7 +13,7 @@ template<class stage> class Visualizer{
   static constexpr s3d::Color empty_color = Color{20,15,39};
   static constexpr int window_H = 600;
   static constexpr int window_W = 800;
-  //X:125~675,Y:25~575を使用
+  //X:150~650,Y:50~550を使用
   static constexpr int visualizer_H_min = 50;
   static constexpr int visualizer_H_max = 550;
   static constexpr int visualizer_W_min = 150;
@@ -31,12 +31,34 @@ template<class stage> class Visualizer{
   static void show(const Board<stage> &board);
   //ビジュアライズのうち、手動で盤面のターンを進めるための関数
   static void put_both_cards_on_visualizer();
+  //1P,2Pの指し手をビジュアライザに送り込む
+  static void set_1P_hand(const int card_id,const int card_direction,const int card_pos_H,const int card_pos_W,const bool is_pass,const bool is_SP_attack);
+  static void set_1P_hand(const int card_id,const int status_id,const bool is_SP_attack);
+  static void set_2P_hand(const int card_id,const int card_direction,const int card_pos_H,const int card_pos_W,const bool is_pass,const bool is_SP_attack);
+  static void set_2P_hand(const int card_id,const int status_id,const bool is_SP_attack);
+  //ビジュアライザに入力するための変数
+  static int my_card_id,my_card_direction,my_card_pos_H,my_card_pos_W;
+  static bool is_my_pass,is_my_SP_attack;
+  static int opponent_card_id,opponent_card_direction,opponent_card_pos_H,opponent_card_pos_W;
+  static bool is_opponent_pass,is_opponent_SP_attack;
 public:
   //画面に盤面をビジュアライズする
   static void visualize();
   static void set_board(Board<stage> &board);
 };
 template<class stage> Board<stage> *Visualizer<stage>::board_ptr = nullptr;
+template<class stage> int Visualizer<stage>::my_card_id = 0;
+template<class stage> int Visualizer<stage>::my_card_direction = 0;
+template<class stage> int Visualizer<stage>::my_card_pos_H = -1;
+template<class stage> int Visualizer<stage>::my_card_pos_W = -1;
+template<class stage> bool Visualizer<stage>::is_my_pass = false;
+template<class stage> bool Visualizer<stage>::is_my_SP_attack = false;
+template<class stage> int Visualizer<stage>::opponent_card_id = 0;
+template<class stage> int Visualizer<stage>::opponent_card_direction = 0;
+template<class stage> int Visualizer<stage>::opponent_card_pos_H = -1;
+template<class stage> int Visualizer<stage>::opponent_card_pos_W = -1;
+template<class stage> bool Visualizer<stage>::is_opponent_pass = false;
+template<class stage> bool Visualizer<stage>::is_opponent_SP_attack = false;
 template<class stage> std::vector<std::vector<Rect>> Visualizer<stage>::squares(stage::h,std::vector<Rect>(stage::w));
 template<class stage> void Visualizer<stage>::squares_setting(){
   for(int i=0;i<stage::h;i++){
@@ -88,8 +110,6 @@ template<class stage> void Visualizer<stage>::put_both_cards_on_visualizer(){
   //まだboard_ptrが設定されていないなら何もしない
   if(board_ptr == nullptr) return;
   Board<stage> &board = *board_ptr;
-  static int my_card_id = 0,my_card_direction = 0,my_card_pos_H = -1,my_card_pos_W = -1,is_my_pass = 0,is_my_SP_attack = 0;
-  static int opponent_card_id = 0,opponent_card_direction = 0,opponent_card_pos_H = -1,opponent_card_pos_W = -1,is_opponent_pass = 0,is_opponent_SP_attack = 0;
   //Passボタンの描画
   static Font font(30);
   const String pass_text = U"Pass";
@@ -178,40 +198,103 @@ template<class stage> void Visualizer<stage>::put_both_cards_on_visualizer(){
   static RectF OK_button = font(OK_text).region(OK_button_pos);
   OK_button.draw(Palette::Yellow);
   font(OK_text).draw(OK_button_pos,Palette::Black);
-  //もしすべての項目が埋まっている場合
-  if(my_card_id != 0 && my_card_direction != -1 && ((my_card_pos_H != -1 && my_card_pos_W != -1) || is_my_pass == 1) &&
-    opponent_card_id != 0 && opponent_card_direction != -1 && ((opponent_card_pos_H != -1 && opponent_card_pos_W != -1) || is_opponent_pass == 1)){
-    //入力された手が適切か
-    bool is_my_choice_valid = board.is_valid_placement(true,my_card_id,my_card_direction,my_card_pos_H,my_card_pos_W,is_my_pass,is_my_SP_attack);
-    bool is_opponent_choice_valid = board.is_valid_placement(false,opponent_card_id,opponent_card_direction,opponent_card_pos_H,opponent_card_pos_W,is_opponent_pass,is_opponent_SP_attack);
-    //適切でなかったら,適切でない方に「invalid」を表示する
-    if(!(is_my_choice_valid && is_opponent_choice_valid)){
-      if(!is_my_choice_valid) font(U"Invalid").draw(20,400);
-      if(!is_opponent_choice_valid) font(U"Invalid").draw(655,400);
-      show(board);
-    }
-    //OKボタンが押されたら、合法手の場合実際にカードを置く
-    else if(OK_button.leftClicked()){
-      board.put_both_cards_without_validation(my_card_id,my_card_direction,my_card_pos_H,my_card_pos_W,is_my_pass,is_my_SP_attack,
-      opponent_card_id,opponent_card_direction,opponent_card_pos_H,opponent_card_pos_W,is_opponent_pass,is_opponent_SP_attack);
-      my_card_pos_H = my_card_pos_W = opponent_card_pos_H = opponent_card_pos_W = -1;
-      my_card_id = my_card_direction = is_my_pass = is_my_SP_attack = opponent_card_id = opponent_card_direction = is_opponent_pass = is_opponent_SP_attack = 0;
-      show(board);
-    }
-    //押されてない場合、置いた場合の盤面を表示する
-    else{
-      static Board<stage> virtual_board;
-      virtual_board = board;
-      virtual_board.put_both_cards_without_validation(my_card_id,my_card_direction,my_card_pos_H,my_card_pos_W,is_my_pass,is_my_SP_attack,
-      opponent_card_id,opponent_card_direction,opponent_card_pos_H,opponent_card_pos_W,is_opponent_pass,is_opponent_SP_attack);
-      show(virtual_board);
-    }
-  }
-  //すべての項目が埋まっていない場合、元の盤面を表示
-  else{
+  //それぞれの手が入力されているか(合法かどうかは考えない)
+  bool is_my_choice_filled = (my_card_id != 0 && my_card_direction != -1 && ((my_card_pos_H != -1 && my_card_pos_W != -1) || is_my_pass == 1));
+  bool is_opponent_choice_filled = (opponent_card_id != 0 && opponent_card_direction != -1 && ((opponent_card_pos_H != -1 && opponent_card_pos_W != -1) || is_opponent_pass == 1));
+  //入力された手が合法か
+  bool is_my_choice_valid = is_my_choice_filled && board.is_valid_placement(true,my_card_id,my_card_direction,my_card_pos_H,my_card_pos_W,is_my_pass,is_my_SP_attack);
+  bool is_opponent_choice_valid = is_opponent_choice_filled && board.is_valid_placement(false,opponent_card_id,opponent_card_direction,opponent_card_pos_H,opponent_card_pos_W,is_opponent_pass,is_opponent_SP_attack);
+  //OKボタンが押されたら、合法手の場合実際にカードを置く
+  if(is_my_choice_valid && is_opponent_choice_valid && OK_button.leftClicked()){
+    board.put_both_cards_without_validation(my_card_id,my_card_direction,my_card_pos_H,my_card_pos_W,is_my_pass,is_my_SP_attack,
+    opponent_card_id,opponent_card_direction,opponent_card_pos_H,opponent_card_pos_W,is_opponent_pass,is_opponent_SP_attack);
+    my_card_pos_H = my_card_pos_W = opponent_card_pos_H = opponent_card_pos_W = -1;
+    my_card_id = my_card_direction = is_my_pass = is_my_SP_attack = opponent_card_id = opponent_card_direction = is_opponent_pass = is_opponent_SP_attack = 0;
     show(board);
+    return;
   }
+  //合法でない方の手に「Invalid」を表示する
+  if(is_my_choice_filled && !is_my_choice_valid) font(U"Invalid").draw(20,400);
+  if(is_opponent_choice_filled && !is_opponent_choice_valid) font(U"Invalid").draw(655,400);
+  //それぞれ、合法手の場合置いた時の盤面を表示する
+  static Board<stage> virtual_board;
+  virtual_board = board;
+  if(is_my_choice_valid && is_opponent_choice_valid) virtual_board.put_both_cards_without_validation(my_card_id,my_card_direction,my_card_pos_H,my_card_pos_W,is_my_pass,is_my_SP_attack,opponent_card_id,opponent_card_direction,opponent_card_pos_H,opponent_card_pos_W,is_opponent_pass,is_opponent_SP_attack);
+  else if(is_my_choice_valid) virtual_board.put_my_card_without_validation(my_card_id,my_card_direction,my_card_pos_H,my_card_pos_W,is_my_pass,is_my_SP_attack);
+  else if(is_opponent_choice_valid) virtual_board.put_opponent_card_without_validation(opponent_card_id,opponent_card_direction,opponent_card_pos_H,opponent_card_pos_W,is_opponent_pass,is_opponent_SP_attack);
+  show(virtual_board);
+  return;
+  // //もし全ての項目が埋まっている場合
+  // if(is_my_choice_filled && is_opponent_choice_filled){
+  //   //適切でなかったら,合法でない方に「Invalid」を表示する
+  //   if(!(is_my_choice_valid && is_opponent_choice_valid)){
+  //     if(!is_my_choice_valid) font(U"Invalid").draw(20,400);
+  //     if(!is_opponent_choice_valid) font(U"Invalid").draw(655,400);
+  //     show(board);
+  //   }
+  //   //OKボタンが押されたら、合法手の場合実際にカードを置く
+  //   // else if(OK_button.leftClicked()){
+  //   //   board.put_both_cards_without_validation(my_card_id,my_card_direction,my_card_pos_H,my_card_pos_W,is_my_pass,is_my_SP_attack,
+  //   //   opponent_card_id,opponent_card_direction,opponent_card_pos_H,opponent_card_pos_W,is_opponent_pass,is_opponent_SP_attack);
+  //   //   my_card_pos_H = my_card_pos_W = opponent_card_pos_H = opponent_card_pos_W = -1;
+  //   //   my_card_id = my_card_direction = is_my_pass = is_my_SP_attack = opponent_card_id = opponent_card_direction = is_opponent_pass = is_opponent_SP_attack = 0;
+  //   //   show(board);
+  //   // }
+  //   //OKボタンが押されてない場合、置いた場合の盤面を表示する
+  //   else{
+  //     static Board<stage> virtual_board;
+  //     virtual_board = board;
+  //     virtual_board.put_both_cards_without_validation(my_card_id,my_card_direction,my_card_pos_H,my_card_pos_W,is_my_pass,is_my_SP_attack,
+  //     opponent_card_id,opponent_card_direction,opponent_card_pos_H,opponent_card_pos_W,is_opponent_pass,is_opponent_SP_attack);
+  //     show(virtual_board);
+  //   }
+  // }
+  // //すべての項目が埋まっていない場合、元の盤面を表示
+  // else{
+  //   show(board);
+  // }
 }
+template<class stage> void Visualizer<stage>::set_1P_hand(const int card_id,const int card_direction,const int card_pos_H,const int card_pos_W,const bool is_pass,const bool is_SP_attack){
+  my_card_id = card_id;
+  my_card_direction = card_direction;
+  my_card_pos_H = card_pos_H;
+  my_card_pos_W = card_pos_W;
+  is_my_pass = is_pass;
+  is_my_SP_attack = is_SP_attack;
+}
+template<class stage> void Visualizer<stage>::set_1P_hand(const int card_id,const int status_id,const bool is_SP_attack){
+  int card_direction,card_pos_H,card_pos_W;bool is_pass;
+  if(status_id == -1){
+    is_pass = true;
+    card_direction = card_pos_H = card_pos_W = -1;
+  }
+  else{
+    is_pass = false;
+    std::tie(card_direction,card_pos_H,card_pos_W) = stage::card_status[card_id][status_id];
+  }
+  set_1P_hand(card_id,card_direction,card_pos_H,card_pos_W,is_pass,is_SP_attack);
+}
+template<class stage> void Visualizer<stage>::set_2P_hand(const int card_id,const int card_direction,const int card_pos_H,const int card_pos_W,const bool is_pass,const bool is_SP_attack){
+  opponent_card_id = card_id;
+  opponent_card_direction = card_direction;
+  opponent_card_pos_H = card_pos_H;
+  opponent_card_pos_W = card_pos_W;
+  is_opponent_pass = is_pass;
+  is_opponent_SP_attack = is_SP_attack;
+}
+template<class stage> void Visualizer<stage>::set_2P_hand(const int card_id,const int status_id,const bool is_SP_attack){
+  int card_direction,card_pos_H,card_pos_W;bool is_pass;
+  if(status_id == -1){
+    is_pass = true;
+    card_direction = card_pos_H = card_pos_W = -1;
+  }
+  else{
+    is_pass = false;
+    std::tie(card_direction,card_pos_H,card_pos_W) = stage::card_status[card_id][status_id];
+  }
+  set_2P_hand(card_id,card_direction,card_pos_H,card_pos_W,is_pass,is_SP_attack);
+}
+
 template<class stage> void Visualizer<stage>::visualize(){
   put_both_cards_on_visualizer();
 }
