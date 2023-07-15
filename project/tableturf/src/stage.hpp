@@ -5,7 +5,7 @@
 #include <utility>
 template<int ID,int H,int W,int N_square> class Stage{
 public:
-  static constexpr void initialize(const bool exists_square[H][W],const int my_starting_pos_H,const int my_starting_pos_W,const int opponent_starting_pos_H,const int opponent_starting_pos_W);
+  static constexpr void initialize(const bool exists_square[H][W],const int P1_starting_pos_H,const int P1_starting_pos_W,const int P2_starting_pos_H,const int P2_starting_pos_W);
   //BoardクラスでH,W,N_squareを利用できるようにするため
   static constexpr int h = H;
   static constexpr int w = W;
@@ -34,7 +34,7 @@ public:
   //exists_square[i][j]:i行目j列目にマスがあるか(0-indexed)
   static bool exists_square[H][W];
   //自分、相手の最初のSPマスがそれぞれ何行目何列目にあるか
-  static int my_starting_pos_H,my_starting_pos_W,opponent_starting_pos_H,opponent_starting_pos_W;
+  static int P1_starting_pos_H,P1_starting_pos_W,P2_starting_pos_H,P2_starting_pos_W;
   //各マスが左上から何番目にあるか(0-indexed)(ない場合は-1)
   static int place_to_order[H][W];
   //左上からi番目にあるマスの位置(0-indexed)
@@ -59,10 +59,10 @@ template<int ID,int H,int W,int N_square> std::bitset<N_square> Stage<ID,H,W,N_s
 template<int ID,int H,int W,int N_square> std::bitset<N_square> Stage<ID,H,W,N_square>::card_around_square[N_card+1][N_square*4] = {};
 template<int ID,int H,int W,int N_square> std::bitset<N_square> Stage<ID,H,W,N_square>::is_there_a_block_nearby_default[8] = {};
 template<int ID,int H,int W,int N_square> bool Stage<ID,H,W,N_square>::exists_square[H][W] = {};
-template<int ID,int H,int W,int N_square> int Stage<ID,H,W,N_square>::my_starting_pos_H = 0;
-template<int ID,int H,int W,int N_square> int Stage<ID,H,W,N_square>::my_starting_pos_W = 0;
-template<int ID,int H,int W,int N_square> int Stage<ID,H,W,N_square>::opponent_starting_pos_H = 0;
-template<int ID,int H,int W,int N_square> int Stage<ID,H,W,N_square>::opponent_starting_pos_W = 0;
+template<int ID,int H,int W,int N_square> int Stage<ID,H,W,N_square>::P1_starting_pos_H = 0;
+template<int ID,int H,int W,int N_square> int Stage<ID,H,W,N_square>::P1_starting_pos_W = 0;
+template<int ID,int H,int W,int N_square> int Stage<ID,H,W,N_square>::P2_starting_pos_H = 0;
+template<int ID,int H,int W,int N_square> int Stage<ID,H,W,N_square>::P2_starting_pos_W = 0;
 template<int ID,int H,int W,int N_square> int Stage<ID,H,W,N_square>::place_to_order[H][W] = {};
 template<int ID,int H,int W,int N_square> std::pair<int,int> Stage<ID,H,W,N_square>::order_to_place[N_square] = {};
 template<int ID,int H,int W,int N_square> constexpr void Stage<ID,H,W,N_square>::order_setting(){
@@ -241,23 +241,23 @@ template<int ID,int H,int W,int N_square> constexpr void Stage<ID,H,W,N_square>:
         //座標(i,j)から見て(ni,nj)はcordinate_diff[k]平行移動した位置にある
         //(ni,nj)が盤面外か初期のSPマスであれば、is_there_a_block_nearby_default[k]を更新
         int ni = i+cordinate_diff[k].first,nj = j+cordinate_diff[k].second;
-        if(ni < 0 || H <= ni || nj < 0 || W <= nj || !exists_square[ni][nj] || (ni == my_starting_pos_H && nj == my_starting_pos_W) || (ni == opponent_starting_pos_H && nj == opponent_starting_pos_W)){
+        if(ni < 0 || H <= ni || nj < 0 || W <= nj || !exists_square[ni][nj] || (ni == P1_starting_pos_H && nj == P1_starting_pos_W) || (ni == P2_starting_pos_H && nj == P2_starting_pos_W)){
           is_there_a_block_nearby_default[k][place_to_order[i][j]] = true;
         }
       }
     }
   }
 }
-template<int ID,int H,int W,int N_square> constexpr void Stage<ID,H,W,N_square>::initialize(const bool exists_square[H][W],const int my_starting_pos_H,const int my_starting_pos_W,const int opponent_starting_pos_H,const int opponent_starting_pos_W){
+template<int ID,int H,int W,int N_square> constexpr void Stage<ID,H,W,N_square>::initialize(const bool exists_square[H][W],const int P1_starting_pos_H,const int P1_starting_pos_W,const int P2_starting_pos_H,const int P2_starting_pos_W){
   for(int i=0;i<H;i++){
     for(int j=0;j<W;j++){
       Stage<ID,H,W,N_square>::exists_square[i][j] = exists_square[i][j];
     }
   }
-  Stage<ID,H,W,N_square>::my_starting_pos_H = my_starting_pos_H;
-  Stage<ID,H,W,N_square>::my_starting_pos_W = my_starting_pos_W;
-  Stage<ID,H,W,N_square>::opponent_starting_pos_H = opponent_starting_pos_H;
-  Stage<ID,H,W,N_square>::opponent_starting_pos_W = opponent_starting_pos_W;
+  Stage<ID,H,W,N_square>::P1_starting_pos_H = P1_starting_pos_H;
+  Stage<ID,H,W,N_square>::P1_starting_pos_W = P1_starting_pos_W;
+  Stage<ID,H,W,N_square>::P2_starting_pos_H = P2_starting_pos_H;
+  Stage<ID,H,W,N_square>::P2_starting_pos_W = P2_starting_pos_W;
   order_setting();
   card_setting();
   board_default_setting();
