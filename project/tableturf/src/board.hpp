@@ -8,8 +8,12 @@ public:
   static constexpr int max_turn = 12;
   //盤面の縦、横、マス数
   static constexpr int N_square = stage::n_square;
+  //デッキに入るカードの枚数
+  static constexpr int N_card_in_deck = 15;
   //現在のターン数
   int current_turn;
+  //自分と相手が使ったカードのID
+  int my_used_cards[max_turn],opponent_used_cards[max_turn];
   //自分の現在のSPポイントと相手の現在のSPポイント
   int my_SP_point,opponent_SP_point;
   //自分が既に使ったSPポイントと相手が既に使ったSPポイント
@@ -204,6 +208,9 @@ template<class stage> void Board<stage>::put_both_cards_without_validation(const
   //SPポイントを更新
   my_SP_point = my_square_SP_burning.count()+my_pass_time-my_SP_point_used;
   opponent_SP_point = opponent_square_SP_burning.count()+opponent_pass_time-opponent_SP_point_used;
+  //my_used_cardsとopponent_used_cardsを更新
+  my_used_cards[current_turn-1] = my_card_id;
+  opponent_used_cards[current_turn-1] = opponent_card_id;
   //ターン数を更新
   current_turn++;
 }
