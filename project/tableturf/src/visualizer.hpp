@@ -3,12 +3,12 @@
 #include <vector>
 #include "board.hpp"
 template<class stage> class Visualizer{
-  static constexpr s3d::Color P1_color_normal = Color{237,248,81};
-  static constexpr s3d::Color P1_color_SP = Color{243,163,58};
-  static constexpr s3d::Color P1_color_SP_burning = Color{255,255,89};
-  static constexpr s3d::Color P2_color_normal = Color{77,91,246};
-  static constexpr s3d::Color P2_color_SP = Color{117,239,252};
-  static constexpr s3d::Color P2_color_SP_burning = Color{244,255,255};
+  static constexpr s3d::Color color_normal_P1 = Color{237,248,81};
+  static constexpr s3d::Color color_SP_P1 = Color{243,163,58};
+  static constexpr s3d::Color color_SP_burning_P1 = Color{255,255,89};
+  static constexpr s3d::Color color_normal_P2 = Color{77,91,246};
+  static constexpr s3d::Color color_SP_P2 = Color{117,239,252};
+  static constexpr s3d::Color color_SP_burning_P2 = Color{244,255,255};
   static constexpr s3d::Color wall_color = Color{216,216,216};
   static constexpr s3d::Color empty_color = Color{20,15,39};
   static constexpr int window_H = 600;
@@ -37,28 +37,28 @@ template<class stage> class Visualizer{
   static void set_P2_hand(const int card_id,const int card_direction,const int card_pos_H,const int card_pos_W,const bool is_pass,const bool is_SP_attack);
   static void set_P2_hand(const int card_id,const int status_id,const bool is_SP_attack);
   //ビジュアライザに入力するための変数
-  static int P1_card_id,P1_card_direction,P1_card_pos_H,P1_card_pos_W;
-  static bool is_P1_pass,is_P1_SP_attack;
-  static int P2_card_id,P2_card_direction,P2_card_pos_H,P2_card_pos_W;
-  static bool is_P2_pass,is_P2_SP_attack;
+  static int card_id_P1,card_direction_P1,card_pos_H_P1,card_pos_W_P1;
+  static bool is_pass_P1,is_SP_attack_P1;
+  static int card_id_P2,card_direction_P2,card_pos_H_P2,card_pos_W_P2;
+  static bool is_pass_P2,is_SP_attack_P2;
 public:
   //画面に盤面をビジュアライズする
   static void visualize();
   static void set_board(Board<stage> &board);
 };
 template<class stage> Board<stage> *Visualizer<stage>::board_ptr = nullptr;
-template<class stage> int Visualizer<stage>::P1_card_id = 0;
-template<class stage> int Visualizer<stage>::P1_card_direction = 0;
-template<class stage> int Visualizer<stage>::P1_card_pos_H = -1;
-template<class stage> int Visualizer<stage>::P1_card_pos_W = -1;
-template<class stage> bool Visualizer<stage>::is_P1_pass = false;
-template<class stage> bool Visualizer<stage>::is_P1_SP_attack = false;
-template<class stage> int Visualizer<stage>::P2_card_id = 0;
-template<class stage> int Visualizer<stage>::P2_card_direction = 0;
-template<class stage> int Visualizer<stage>::P2_card_pos_H = -1;
-template<class stage> int Visualizer<stage>::P2_card_pos_W = -1;
-template<class stage> bool Visualizer<stage>::is_P2_pass = false;
-template<class stage> bool Visualizer<stage>::is_P2_SP_attack = false;
+template<class stage> int Visualizer<stage>::card_id_P1 = 0;
+template<class stage> int Visualizer<stage>::card_direction_P1 = 0;
+template<class stage> int Visualizer<stage>::card_pos_H_P1 = -1;
+template<class stage> int Visualizer<stage>::card_pos_W_P1 = -1;
+template<class stage> bool Visualizer<stage>::is_pass_P1 = false;
+template<class stage> bool Visualizer<stage>::is_SP_attack_P1 = false;
+template<class stage> int Visualizer<stage>::card_id_P2 = 0;
+template<class stage> int Visualizer<stage>::card_direction_P2 = 0;
+template<class stage> int Visualizer<stage>::card_pos_H_P2 = -1;
+template<class stage> int Visualizer<stage>::card_pos_W_P2 = -1;
+template<class stage> bool Visualizer<stage>::is_pass_P2 = false;
+template<class stage> bool Visualizer<stage>::is_SP_attack_P2 = false;
 template<class stage> std::vector<std::vector<Rect>> Visualizer<stage>::squares(stage::h,std::vector<Rect>(stage::w));
 template<class stage> void Visualizer<stage>::squares_setting(){
   for(int i=0;i<stage::h;i++){
@@ -84,17 +84,17 @@ template<class stage> void Visualizer<stage>::show(const Board<stage> &board){
         //現在のマスが何番目化
         int now_order = stage::place_to_order[i][j];
         s3d::Color now_color;
-        if(board.P1_square_SP[now_order]) now_color = P1_color_SP;
-        else if(board.P2_square_SP[now_order]) now_color = P2_color_SP;
+        if(board.square_SP_P1[now_order]) now_color = color_SP_P1;
+        else if(board.square_SP_P2[now_order]) now_color = color_SP_P2;
         else if(board.wall_square[now_order]) now_color = wall_color;
-        else if(board.P1_square[now_order]) now_color = P1_color_normal;
-        else if(board.P2_square[now_order]) now_color = P2_color_normal;
+        else if(board.square_P1[now_order]) now_color = color_normal_P1;
+        else if(board.square_P2[now_order]) now_color = color_normal_P2;
         else now_color = empty_color;
         squares[i][j].draw(now_color);
-        if(board.P1_square_SP_burning[now_order]){
+        if(board.square_SP_burning_P1[now_order]){
           font1(U"S").drawAt(visualizer_W_left+j*square_size+square_size/2,visualizer_H_top+i*square_size+square_size/2,Palette::Black);
         }
-        else if(board.P2_square_SP_burning[now_order]){
+        else if(board.square_SP_burning_P2[now_order]){
           font1(U"S").drawAt(visualizer_W_left+j*square_size+square_size/2,visualizer_H_top+i*square_size+square_size/2,Palette::Black);
         }
       }
@@ -102,8 +102,8 @@ template<class stage> void Visualizer<stage>::show(const Board<stage> &board){
   }
   //ターン数、それぞれのマス数とSPポイントを表示
   static Font font2(30);
-  font2(U"P1\n□:{}\nSP:{}"_fmt(board.P1_square.count(),board.P1_SP_point)).draw(20,20);
-  font2(U"P2\n□:{}\nSP:{}"_fmt(board.P2_square.count(),board.P2_SP_point)).draw(655,20);
+  font2(U"P1\n□:{}\nSP:{}"_fmt(board.square_P1.count(),board.SP_point_P1)).draw(20,20);
+  font2(U"P2\n□:{}\nSP:{}"_fmt(board.square_P2.count(),board.SP_point_P2)).draw(655,20);
   font2(U"Turn:{}/{}"_fmt(board.current_turn,Board<stage>::max_turn)).draw(20,550);
 }
 template<class stage> void Visualizer<stage>::put_both_cards_on_visualizer(){
@@ -113,54 +113,54 @@ template<class stage> void Visualizer<stage>::put_both_cards_on_visualizer(){
   //Passボタンの描画
   static Font font(30);
   const String pass_text = U"Pass";
-  constexpr Vec2 P1_pass_button_pos{20,150},P2_pass_button_pos{655,150};
-  static RectF P1_pass_button = font(pass_text).region(P1_pass_button_pos);
-  static RectF P2_pass_button = font(pass_text).region(P2_pass_button_pos);
-  P1_pass_button.draw(is_P1_pass ? Palette::Yellow:Palette::Gray);
-  P2_pass_button.draw(is_P2_pass ? Palette::Yellow:Palette::Gray);
-  font(pass_text).draw(P1_pass_button_pos,Palette::Black);
-  font(pass_text).draw(P2_pass_button_pos,Palette::Black);
-  if(P1_pass_button.leftClicked()) is_P1_pass ^= 1;
-  if(P2_pass_button.leftClicked()) is_P2_pass ^= 1;
+  constexpr Vec2 pass_button_pos_P1{20,150},pass_button_pos_P2{655,150};
+  static RectF pass_button_P1 = font(pass_text).region(pass_button_pos_P1);
+  static RectF pass_button_P2 = font(pass_text).region(pass_button_pos_P2);
+  pass_button_P1.draw(is_pass_P1 ? Palette::Yellow:Palette::Gray);
+  pass_button_P2.draw(is_pass_P2 ? Palette::Yellow:Palette::Gray);
+  font(pass_text).draw(pass_button_pos_P1,Palette::Black);
+  font(pass_text).draw(pass_button_pos_P2,Palette::Black);
+  if(pass_button_P1.leftClicked()) is_pass_P1 ^= 1;
+  if(pass_button_P2.leftClicked()) is_pass_P2 ^= 1;
   //Specialボタンの描画
   const String special_text = U"Special";
-  constexpr Vec2 P1_special_button_pos{20,200},P2_special_button_pos{655,200};
-  static RectF P1_special_button = font(special_text).region(P1_special_button_pos);
-  static RectF P2_special_button = font(special_text).region(P2_special_button_pos);
-  P1_special_button.draw(is_P1_SP_attack ? Palette::Yellow:Palette::Gray);
-  P2_special_button.draw(is_P2_SP_attack ? Palette::Yellow:Palette::Gray);
-  font(special_text).draw(P1_special_button_pos,Palette::Black);
-  font(special_text).draw(P2_special_button_pos,Palette::Black);
-  if(P1_special_button.leftClicked()) is_P1_SP_attack ^= 1;
-  if(P2_special_button.leftClicked()) is_P2_SP_attack ^= 1;
+  constexpr Vec2 special_button_pos_P1{20,200},special_button_pos_P2{655,200};
+  static RectF special_button_P1 = font(special_text).region(special_button_pos_P1);
+  static RectF special_button_P2 = font(special_text).region(special_button_pos_P2);
+  special_button_P1.draw(is_SP_attack_P1 ? Palette::Yellow:Palette::Gray);
+  special_button_P2.draw(is_SP_attack_P2 ? Palette::Yellow:Palette::Gray);
+  font(special_text).draw(special_button_pos_P1,Palette::Black);
+  font(special_text).draw(special_button_pos_P2,Palette::Black);
+  if(special_button_P1.leftClicked()) is_SP_attack_P1 ^= 1;
+  if(special_button_P2.leftClicked()) is_SP_attack_P2 ^= 1;
   //IDボタンの描画
   const String ID_text = U"ID:";
-  constexpr Vec2 P1_ID_button_pos{20,250},P2_ID_button_pos{655,250};
-  static RectF P1_ID_button = font(ID_text).region(P1_ID_button_pos);
-  static RectF P2_ID_button = font(ID_text).region(P2_ID_button_pos);
-  P1_ID_button.draw();
-  P2_ID_button.draw();
-  font(ID_text).draw(P1_ID_button_pos,Palette::Black);
-  font(ID_text).draw(P2_ID_button_pos,Palette::Black);
-  font(P1_card_id).draw(60,250);
-  font(P2_card_id).draw(695,250);
+  constexpr Vec2 ID_button_pos_P1{20,250},ID_button_pos_P2{655,250};
+  static RectF ID_button_P1 = font(ID_text).region(ID_button_pos_P1);
+  static RectF ID_button_P2 = font(ID_text).region(ID_button_pos_P2);
+  ID_button_P1.draw();
+  ID_button_P2.draw();
+  font(ID_text).draw(ID_button_pos_P1,Palette::Black);
+  font(ID_text).draw(ID_button_pos_P2,Palette::Black);
+  font(card_id_P1).draw(60,250);
+  font(card_id_P2).draw(695,250);
   //Directionボタンの描画
   const String direction_text = U"Dir:";
-  constexpr Vec2 P1_direction_button_pos{20,300},P2_direction_button_pos{655,300};
-  static RectF P1_direction_button = font(direction_text).region(P1_direction_button_pos);
-  static RectF P2_direction_button = font(direction_text).region(P2_direction_button_pos);
-  P1_direction_button.draw();
-  P2_direction_button.draw();
-  font(direction_text).draw(P1_direction_button_pos,Palette::Black);
-  font(direction_text).draw(P2_direction_button_pos,Palette::Black);
-  font(P1_card_direction).draw(80,300);
-  font(P2_card_direction).draw(715,300);
+  constexpr Vec2 direction_button_pos_P1{20,300},direction_button_pos_P2{655,300};
+  static RectF direction_button_P1 = font(direction_text).region(direction_button_pos_P1);
+  static RectF direction_button_P2 = font(direction_text).region(direction_button_pos_P2);
+  direction_button_P1.draw();
+  direction_button_P2.draw();
+  font(direction_text).draw(direction_button_pos_P1,Palette::Black);
+  font(direction_text).draw(direction_button_pos_P2,Palette::Black);
+  font(card_direction_P1).draw(80,300);
+  font(card_direction_P2).draw(715,300);
   //数値入力
-  static int *inputted_num = &P1_card_id;
-  if(P1_ID_button.leftClicked()) inputted_num = &P1_card_id;
-  if(P2_ID_button.leftClicked()) inputted_num = &P2_card_id;
-  if(P1_direction_button.leftClicked()) inputted_num = &P1_card_direction;
-  if(P2_direction_button.leftClicked()) inputted_num = &P2_card_direction;
+  static int *inputted_num = &card_id_P1;
+  if(ID_button_P1.leftClicked()) inputted_num = &card_id_P1;
+  if(ID_button_P2.leftClicked()) inputted_num = &card_id_P2;
+  if(direction_button_P1.leftClicked()) inputted_num = &card_direction_P1;
+  if(direction_button_P2.leftClicked()) inputted_num = &card_direction_P2;
   constexpr std::pair<Input,int> key_to_num[10] = {{Key0,0},{Key1,1},{Key2,2},{Key3,3},{Key4,4},{Key5,5},{Key6,6},{Key7,7},{Key8,8},{Key9,9}};
   for(auto [key,num]:key_to_num){
     if(key.down() && *inputted_num < 1000) *inputted_num = *inputted_num*10+num;
@@ -168,22 +168,22 @@ template<class stage> void Visualizer<stage>::put_both_cards_on_visualizer(){
   if(KeyBackspace.down()) *inputted_num /= 10;
   //Positionボタンの描画
   const String position_text = U"Pos:";
-  constexpr Vec2 P1_position_button_pos{20,350},P2_position_button_pos{655,350};
-  static RectF P1_position_button = font(position_text).region(P1_position_button_pos);
-  static RectF P2_position_button = font(position_text).region(P2_position_button_pos);
-  P1_position_button.draw();
-  P2_position_button.draw();
-  font(position_text).draw(P1_position_button_pos,Palette::Black);
-  font(position_text).draw(P2_position_button_pos,Palette::Black);
-  font(U"{} {}"_fmt(P1_card_pos_H,P1_card_pos_W)).draw(80,350);
-  font(U"{} {}"_fmt(P2_card_pos_H,P2_card_pos_W)).draw(715,350);
+  constexpr Vec2 position_button_pos_P1{20,350},position_button_pos_P2{655,350};
+  static RectF position_button_P1 = font(position_text).region(position_button_pos_P1);
+  static RectF position_button_P2 = font(position_text).region(position_button_pos_P2);
+  position_button_P1.draw();
+  position_button_P2.draw();
+  font(position_text).draw(position_button_pos_P1,Palette::Black);
+  font(position_text).draw(position_button_pos_P2,Palette::Black);
+  font(U"{} {}"_fmt(card_pos_H_P1,card_pos_W_P1)).draw(80,350);
+  font(U"{} {}"_fmt(card_pos_H_P2,card_pos_W_P2)).draw(715,350);
   //Position入力
-  static int *inputted_H = &P1_card_pos_H,*inputted_W = &P1_card_pos_W;
-  if(P1_position_button.leftPressed()){
-    inputted_H = &P1_card_pos_H;inputted_W = &P1_card_pos_W;
+  static int *inputted_H = &card_pos_H_P1,*inputted_W = &card_pos_W_P1;
+  if(position_button_P1.leftPressed()){
+    inputted_H = &card_pos_H_P1;inputted_W = &card_pos_W_P1;
   }
-  if(P2_position_button.leftPressed()){
-    inputted_H = &P2_card_pos_H;inputted_W = &P2_card_pos_W;
+  if(position_button_P2.leftPressed()){
+    inputted_H = &card_pos_H_P2;inputted_W = &card_pos_W_P2;
   }
   for(int i=0;i<stage::h;i++){
     for(int j=0;j<stage::w;j++){
@@ -199,53 +199,53 @@ template<class stage> void Visualizer<stage>::put_both_cards_on_visualizer(){
   OK_button.draw(Palette::Yellow);
   font(OK_text).draw(OK_button_pos,Palette::Black);
   //それぞれの手が入力されているか(合法かどうかは考えない)
-  bool is_P1_choice_filled = (P1_card_id != 0 && P1_card_direction != -1 && ((P1_card_pos_H != -1 && P1_card_pos_W != -1) || is_P1_pass == 1));
-  bool is_P2_choice_filled = (P2_card_id != 0 && P2_card_direction != -1 && ((P2_card_pos_H != -1 && P2_card_pos_W != -1) || is_P2_pass == 1));
+  bool is_choice_filled_P1 = (card_id_P1 != 0 && card_direction_P1 != -1 && ((card_pos_H_P1 != -1 && card_pos_W_P1 != -1) || is_pass_P1 == 1));
+  bool is_choice_filled_P2 = (card_id_P2 != 0 && card_direction_P2 != -1 && ((card_pos_H_P2 != -1 && card_pos_W_P2 != -1) || is_pass_P2 == 1));
   //入力された手が合法か
-  bool is_P1_choice_valid = is_P1_choice_filled && board.is_valid_placement(true,P1_card_id,P1_card_direction,P1_card_pos_H,P1_card_pos_W,is_P1_pass,is_P1_SP_attack);
-  bool is_P2_choice_valid = is_P2_choice_filled && board.is_valid_placement(false,P2_card_id,P2_card_direction,P2_card_pos_H,P2_card_pos_W,is_P2_pass,is_P2_SP_attack);
+  bool is_choice_valid_P1 = is_choice_filled_P1 && board.is_valid_placement(true,card_id_P1,card_direction_P1,card_pos_H_P1,card_pos_W_P1,is_pass_P1,is_SP_attack_P1);
+  bool is_choice_valid_P2 = is_choice_filled_P2 && board.is_valid_placement(false,card_id_P2,card_direction_P2,card_pos_H_P2,card_pos_W_P2,is_pass_P2,is_SP_attack_P2);
   //OKボタンが押されたら、合法手の場合実際にカードを置く
-  if(is_P1_choice_valid && is_P2_choice_valid && OK_button.leftClicked()){
-    board.put_both_cards_without_validation(P1_card_id,P1_card_direction,P1_card_pos_H,P1_card_pos_W,is_P1_pass,is_P1_SP_attack,
-    P2_card_id,P2_card_direction,P2_card_pos_H,P2_card_pos_W,is_P2_pass,is_P2_SP_attack);
-    P1_card_pos_H = P1_card_pos_W = P2_card_pos_H = P2_card_pos_W = -1;
-    P1_card_id = P1_card_direction = is_P1_pass = is_P1_SP_attack = P2_card_id = P2_card_direction = is_P2_pass = is_P2_SP_attack = 0;
+  if(is_choice_valid_P1 && is_choice_valid_P2 && OK_button.leftClicked()){
+    board.put_both_cards_without_validation(card_id_P1,card_direction_P1,card_pos_H_P1,card_pos_W_P1,is_pass_P1,is_SP_attack_P1,
+    card_id_P2,card_direction_P2,card_pos_H_P2,card_pos_W_P2,is_pass_P2,is_SP_attack_P2);
+    card_pos_H_P1 = card_pos_W_P1 = card_pos_H_P2 = card_pos_W_P2 = -1;
+    card_id_P1 = card_direction_P1 = is_pass_P1 = is_SP_attack_P1 = card_id_P2 = card_direction_P2 = is_pass_P2 = is_SP_attack_P2 = 0;
     show(board);
     return;
   }
   //合法でない方の手に「Invalid」を表示する
-  if(is_P1_choice_filled && !is_P1_choice_valid) font(U"Invalid").draw(20,400);
-  if(is_P2_choice_filled && !is_P2_choice_valid) font(U"Invalid").draw(655,400);
+  if(is_choice_filled_P1 && !is_choice_valid_P1) font(U"Invalid").draw(20,400);
+  if(is_choice_filled_P2 && !is_choice_valid_P2) font(U"Invalid").draw(655,400);
   //それぞれ、合法手の場合置いた時の盤面を表示する
   static Board<stage> virtual_board;
   virtual_board = board;
-  if(is_P1_choice_valid && is_P2_choice_valid) virtual_board.put_both_cards_without_validation(P1_card_id,P1_card_direction,P1_card_pos_H,P1_card_pos_W,is_P1_pass,is_P1_SP_attack,P2_card_id,P2_card_direction,P2_card_pos_H,P2_card_pos_W,is_P2_pass,is_P2_SP_attack);
-  else if(is_P1_choice_valid) virtual_board.put_P1_card_without_validation(P1_card_id,P1_card_direction,P1_card_pos_H,P1_card_pos_W,is_P1_pass,is_P1_SP_attack);
-  else if(is_P2_choice_valid) virtual_board.put_P2_card_without_validation(P2_card_id,P2_card_direction,P2_card_pos_H,P2_card_pos_W,is_P2_pass,is_P2_SP_attack);
+  if(is_choice_valid_P1 && is_choice_valid_P2) virtual_board.put_both_cards_without_validation(card_id_P1,card_direction_P1,card_pos_H_P1,card_pos_W_P1,is_pass_P1,is_SP_attack_P1,card_id_P2,card_direction_P2,card_pos_H_P2,card_pos_W_P2,is_pass_P2,is_SP_attack_P2);
+  else if(is_choice_valid_P1) virtual_board.put_P1_card_without_validation(card_id_P1,card_direction_P1,card_pos_H_P1,card_pos_W_P1,is_pass_P1,is_SP_attack_P1);
+  else if(is_choice_valid_P2) virtual_board.put_P2_card_without_validation(card_id_P2,card_direction_P2,card_pos_H_P2,card_pos_W_P2,is_pass_P2,is_SP_attack_P2);
   show(virtual_board);
   return;
   // //もし全ての項目が埋まっている場合
-  // if(is_P1_choice_filled && is_P2_choice_filled){
+  // if(is_choice_filled_P1 && is_choice_filled_P2){
   //   //適切でなかったら,合法でない方に「Invalid」を表示する
-  //   if(!(is_P1_choice_valid && is_P2_choice_valid)){
-  //     if(!is_P1_choice_valid) font(U"Invalid").draw(20,400);
-  //     if(!is_P2_choice_valid) font(U"Invalid").draw(655,400);
+  //   if(!(is_choice_valid_P1 && is_choice_valid_P2)){
+  //     if(!is_choice_valid_P1) font(U"Invalid").draw(20,400);
+  //     if(!is_choice_valid_P2) font(U"Invalid").draw(655,400);
   //     show(board);
   //   }
   //   //OKボタンが押されたら、合法手の場合実際にカードを置く
   //   // else if(OK_button.leftClicked()){
-  //   //   board.put_both_cards_without_validation(P1_card_id,P1_card_direction,P1_card_pos_H,P1_card_pos_W,is_P1_pass,is_P1_SP_attack,
-  //   //   P2_card_id,P2_card_direction,P2_card_pos_H,P2_card_pos_W,is_P2_pass,is_P2_SP_attack);
-  //   //   P1_card_pos_H = P1_card_pos_W = P2_card_pos_H = P2_card_pos_W = -1;
-  //   //   P1_card_id = P1_card_direction = is_P1_pass = is_P1_SP_attack = P2_card_id = P2_card_direction = is_P2_pass = is_P2_SP_attack = 0;
+  //   //   board.put_both_cards_without_validation(card_id_P1,card_direction_P1,card_pos_H_P1,card_pos_W_P1,is_pass_P1,is_SP_attack_P1,
+  //   //   card_id_P2,card_direction_P2,card_pos_H_P2,card_pos_W_P2,is_pass_P2,is_SP_attack_P2);
+  //   //   card_pos_H_P1 = card_pos_W_P1 = card_pos_H_P2 = card_pos_W_P2 = -1;
+  //   //   card_id_P1 = card_direction_P1 = is_pass_P1 = is_SP_attack_P1 = card_id_P2 = card_direction_P2 = is_pass_P2 = is_SP_attack_P2 = 0;
   //   //   show(board);
   //   // }
   //   //OKボタンが押されてない場合、置いた場合の盤面を表示する
   //   else{
   //     static Board<stage> virtual_board;
   //     virtual_board = board;
-  //     virtual_board.put_both_cards_without_validation(P1_card_id,P1_card_direction,P1_card_pos_H,P1_card_pos_W,is_P1_pass,is_P1_SP_attack,
-  //     P2_card_id,P2_card_direction,P2_card_pos_H,P2_card_pos_W,is_P2_pass,is_P2_SP_attack);
+  //     virtual_board.put_both_cards_without_validation(card_id_P1,card_direction_P1,card_pos_H_P1,card_pos_W_P1,is_pass_P1,is_SP_attack_P1,
+  //     card_id_P2,card_direction_P2,card_pos_H_P2,card_pos_W_P2,is_pass_P2,is_SP_attack_P2);
   //     show(virtual_board);
   //   }
   // }
@@ -255,12 +255,12 @@ template<class stage> void Visualizer<stage>::put_both_cards_on_visualizer(){
   // }
 }
 template<class stage> void Visualizer<stage>::set_P1_hand(const int card_id,const int card_direction,const int card_pos_H,const int card_pos_W,const bool is_pass,const bool is_SP_attack){
-  P1_card_id = card_id;
-  P1_card_direction = card_direction;
-  P1_card_pos_H = card_pos_H;
-  P1_card_pos_W = card_pos_W;
-  is_P1_pass = is_pass;
-  is_P1_SP_attack = is_SP_attack;
+  card_id_P1 = card_id;
+  card_direction_P1 = card_direction;
+  card_pos_H_P1 = card_pos_H;
+  card_pos_W_P1 = card_pos_W;
+  is_pass_P1 = is_pass;
+  is_SP_attack_P1 = is_SP_attack;
 }
 template<class stage> void Visualizer<stage>::set_P1_hand(const int card_id,const int status_id,const bool is_SP_attack){
   int card_direction,card_pos_H,card_pos_W;bool is_pass;
@@ -275,12 +275,12 @@ template<class stage> void Visualizer<stage>::set_P1_hand(const int card_id,cons
   set_P1_hand(card_id,card_direction,card_pos_H,card_pos_W,is_pass,is_SP_attack);
 }
 template<class stage> void Visualizer<stage>::set_P2_hand(const int card_id,const int card_direction,const int card_pos_H,const int card_pos_W,const bool is_pass,const bool is_SP_attack){
-  P2_card_id = card_id;
-  P2_card_direction = card_direction;
-  P2_card_pos_H = card_pos_H;
-  P2_card_pos_W = card_pos_W;
-  is_P2_pass = is_pass;
-  is_P2_SP_attack = is_SP_attack;
+  card_id_P2 = card_id;
+  card_direction_P2 = card_direction;
+  card_pos_H_P2 = card_pos_H;
+  card_pos_W_P2 = card_pos_W;
+  is_pass_P2 = is_pass;
+  is_SP_attack_P2 = is_SP_attack;
 }
 template<class stage> void Visualizer<stage>::set_P2_hand(const int card_id,const int status_id,const bool is_SP_attack){
   int card_direction,card_pos_H,card_pos_W;bool is_pass;

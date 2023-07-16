@@ -5,7 +5,7 @@
 #include <utility>
 template<int ID,int H,int W,int N_square> class Stage{
 public:
-  static constexpr void initialize(const bool exists_square[H][W],const int P1_starting_pos_H,const int P1_starting_pos_W,const int P2_starting_pos_H,const int P2_starting_pos_W);
+  static constexpr void initialize(const bool exists_square[H][W],const int starting_pos_H_P1,const int starting_pos_W_P1,const int starting_pos_H_P2,const int starting_pos_W_P2);
   //BoardクラスでH,W,N_squareを利用できるようにするため
   static constexpr int h = H;
   static constexpr int w = W;
@@ -34,7 +34,7 @@ public:
   //exists_square[i][j]:i行目j列目にマスがあるか(0-indexed)
   static bool exists_square[H][W];
   //自分、相手の最初のSPマスがそれぞれ何行目何列目にあるか
-  static int P1_starting_pos_H,P1_starting_pos_W,P2_starting_pos_H,P2_starting_pos_W;
+  static int starting_pos_H_P1,starting_pos_W_P1,starting_pos_H_P2,starting_pos_W_P2;
   //各マスが左上から何番目にあるか(0-indexed)(ない場合は-1)
   static int place_to_order[H][W];
   //左上からi番目にあるマスの位置(0-indexed)
@@ -59,10 +59,10 @@ template<int ID,int H,int W,int N_square> std::bitset<N_square> Stage<ID,H,W,N_s
 template<int ID,int H,int W,int N_square> std::bitset<N_square> Stage<ID,H,W,N_square>::card_around_square[N_card+1][N_square*4] = {};
 template<int ID,int H,int W,int N_square> std::bitset<N_square> Stage<ID,H,W,N_square>::is_there_a_block_nearby_default[8] = {};
 template<int ID,int H,int W,int N_square> bool Stage<ID,H,W,N_square>::exists_square[H][W] = {};
-template<int ID,int H,int W,int N_square> int Stage<ID,H,W,N_square>::P1_starting_pos_H = 0;
-template<int ID,int H,int W,int N_square> int Stage<ID,H,W,N_square>::P1_starting_pos_W = 0;
-template<int ID,int H,int W,int N_square> int Stage<ID,H,W,N_square>::P2_starting_pos_H = 0;
-template<int ID,int H,int W,int N_square> int Stage<ID,H,W,N_square>::P2_starting_pos_W = 0;
+template<int ID,int H,int W,int N_square> int Stage<ID,H,W,N_square>::starting_pos_H_P1 = 0;
+template<int ID,int H,int W,int N_square> int Stage<ID,H,W,N_square>::starting_pos_W_P1 = 0;
+template<int ID,int H,int W,int N_square> int Stage<ID,H,W,N_square>::starting_pos_H_P2 = 0;
+template<int ID,int H,int W,int N_square> int Stage<ID,H,W,N_square>::starting_pos_W_P2 = 0;
 template<int ID,int H,int W,int N_square> int Stage<ID,H,W,N_square>::place_to_order[H][W] = {};
 template<int ID,int H,int W,int N_square> std::pair<int,int> Stage<ID,H,W,N_square>::order_to_place[N_square] = {};
 template<int ID,int H,int W,int N_square> constexpr void Stage<ID,H,W,N_square>::order_setting(){
@@ -173,60 +173,21 @@ template<int ID,int H,int W,int N_square> constexpr void Stage<ID,H,W,N_square>:
       }
     }
   }
-  for(int i=1;i<=N_card;i++){
-    //R0
-    for(int j=0;j<=H-cards[i].H;j++){
-      for(int k=0;k<=W-cards[i].W;k++){
-        //i番目のカードが盤面上にあるかどうか確認し、あったらbitsetを用意する
-        if(card_is_on_board(i,j,k,0)){
-          card_status_size[i]++;
-          card_status[i][card_status_size[i]-1] = {0,j,k};
-          card_direction_and_place_to_id[i][0][j][k] = card_status_size[i]-1;
-          card_to_bitset(i,j,k,0);
-          card_to_bitset_shifted(i,j,k,0);
-          card_to_bitset_around(i,j,k,0);
-        }
-      }
-    }
-    //R90
-    for(int j=0;j<=H-cards[i].W;j++){
-      for(int k=0;k<=W-cards[i].H;k++){
-        //i番目のカードが盤面上にあるかどうか確認し、あったらbitsetを用意する
-        if(card_is_on_board(i,j,k,1)){
-          card_status_size[i]++;
-          card_status[i][card_status_size[i]-1] = {1,j,k};
-          card_direction_and_place_to_id[i][1][j][k] = card_status_size[i]-1;
-          card_to_bitset(i,j,k,1);
-          card_to_bitset_shifted(i,j,k,1);
-          card_to_bitset_around(i,j,k,1);
-        }
-      }
-    }
-    //R180
-    for(int j=0;j<=H-cards[i].H;j++){
-      for(int k=0;k<=W-cards[i].W;k++){
-        //i番目のカードが盤面上にあるかどうか確認し、あったらbitsetを用意する
-        if(card_is_on_board(i,j,k,2)){
-          card_status_size[i]++;
-          card_status[i][card_status_size[i]-1] = {2,j,k};
-          card_direction_and_place_to_id[i][2][j][k] = card_status_size[i]-1;
-          card_to_bitset(i,j,k,2);
-          card_to_bitset_shifted(i,j,k,2);
-          card_to_bitset_around(i,j,k,2);
-        }
-      }
-    }
-    //R270
-    for(int j=0;j<=H-cards[i].W;j++){
-      for(int k=0;k<=W-cards[i].H;k++){
-        //i番目のカードが盤面上にあるかどうか確認し、あったらbitsetを用意する
-        if(card_is_on_board(i,j,k,3)){
-          card_status_size[i]++;
-          card_status[i][card_status_size[i]-1] = {3,j,k};
-          card_direction_and_place_to_id[i][3][j][k] = card_status_size[i]-1;
-          card_to_bitset(i,j,k,3);
-          card_to_bitset_shifted(i,j,k,3);
-          card_to_bitset_around(i,j,k,3);
+  for(int card_id=1;card_id<=N_card;card_id++){
+    for(int direction=0;direction<4;direction++){
+      const int current_card_H = ((direction==0 || direction==2) ? cards[card_id].H:cards[card_id].W);
+      const int current_card_W = ((direction==0 || direction==2) ? cards[card_id].W:cards[card_id].H);
+      for(int j=0;j<=H-current_card_H;j++){
+        for(int k=0;k<=W-current_card_W;k++){
+          //i番目のカードが盤面上にあるかどうか確認し、あったらbitsetを用意する
+          if(card_is_on_board(card_id,j,k,direction)){
+            card_status_size[card_id]++;
+            card_status[card_id][card_status_size[card_id]-1] = {direction,j,k};
+            card_direction_and_place_to_id[card_id][direction][j][k] = card_status_size[card_id]-1;
+            card_to_bitset(card_id,j,k,direction);
+            card_to_bitset_shifted(card_id,j,k,direction);
+            card_to_bitset_around(card_id,j,k,direction);
+          }
         }
       }
     }
@@ -241,23 +202,23 @@ template<int ID,int H,int W,int N_square> constexpr void Stage<ID,H,W,N_square>:
         //座標(i,j)から見て(ni,nj)はcordinate_diff[k]平行移動した位置にある
         //(ni,nj)が盤面外か初期のSPマスであれば、is_there_a_block_nearby_default[k]を更新
         int ni = i+cordinate_diff[k].first,nj = j+cordinate_diff[k].second;
-        if(ni < 0 || H <= ni || nj < 0 || W <= nj || !exists_square[ni][nj] || (ni == P1_starting_pos_H && nj == P1_starting_pos_W) || (ni == P2_starting_pos_H && nj == P2_starting_pos_W)){
+        if(ni < 0 || H <= ni || nj < 0 || W <= nj || !exists_square[ni][nj] || (ni == starting_pos_H_P1 && nj == starting_pos_W_P1) || (ni == starting_pos_H_P2 && nj == starting_pos_W_P2)){
           is_there_a_block_nearby_default[k][place_to_order[i][j]] = true;
         }
       }
     }
   }
 }
-template<int ID,int H,int W,int N_square> constexpr void Stage<ID,H,W,N_square>::initialize(const bool exists_square[H][W],const int P1_starting_pos_H,const int P1_starting_pos_W,const int P2_starting_pos_H,const int P2_starting_pos_W){
+template<int ID,int H,int W,int N_square> constexpr void Stage<ID,H,W,N_square>::initialize(const bool exists_square[H][W],const int starting_pos_H_P1,const int starting_pos_W_P1,const int starting_pos_H_P2,const int starting_pos_W_P2){
   for(int i=0;i<H;i++){
     for(int j=0;j<W;j++){
       Stage<ID,H,W,N_square>::exists_square[i][j] = exists_square[i][j];
     }
   }
-  Stage<ID,H,W,N_square>::P1_starting_pos_H = P1_starting_pos_H;
-  Stage<ID,H,W,N_square>::P1_starting_pos_W = P1_starting_pos_W;
-  Stage<ID,H,W,N_square>::P2_starting_pos_H = P2_starting_pos_H;
-  Stage<ID,H,W,N_square>::P2_starting_pos_W = P2_starting_pos_W;
+  Stage<ID,H,W,N_square>::starting_pos_H_P1 = starting_pos_H_P1;
+  Stage<ID,H,W,N_square>::starting_pos_W_P1 = starting_pos_W_P1;
+  Stage<ID,H,W,N_square>::starting_pos_H_P2 = starting_pos_H_P2;
+  Stage<ID,H,W,N_square>::starting_pos_W_P2 = starting_pos_W_P2;
   order_setting();
   card_setting();
   board_default_setting();
