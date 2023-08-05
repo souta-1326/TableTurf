@@ -132,13 +132,11 @@ template<class stage> void Board<stage>::put_both_cards_without_validation(const
   else if(cards[card_id_P1].N_square == cards[card_id_P2].N_square){
     //SPとSPまたは通常と通常が衝突したとき、壁となる
     wall_square |= (card_covered_square_SP_P1&card_covered_square_SP_P2)|(card_covered_square_normal_P1&card_covered_square_normal_P2);
-    static std::bitset<N_square> wall_square_reversed;
-    wall_square_reversed = ~wall_square;
-    //壁の部分を取り除いて加える
-    square_SP_P1 |= card_covered_square_SP_P1&wall_square_reversed;
-    square_SP_P2 |= card_covered_square_SP_P2&wall_square_reversed;
-    square_P1 |= card_covered_square_P1&wall_square_reversed;
-    square_P2 |= card_covered_square_P2&wall_square_reversed;
+    //壁以外を処理
+    square_SP_P1 |= card_covered_square_SP_P1&(~card_covered_square_SP_P2);
+    square_SP_P2 |= card_covered_square_SP_P2&(~card_covered_square_SP_P1);
+    square_P1 |= square_SP_P1|(card_covered_square_normal_P1&(~card_covered_square_P2));
+    square_P2 |= square_SP_P2|(card_covered_square_normal_P2&(~card_covered_square_P1));
   }
   //P1のカードの方が面積が小さい場合
   else if(cards[card_id_P1].N_square < cards[card_id_P2].N_square){
