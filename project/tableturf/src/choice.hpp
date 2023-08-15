@@ -1,1 +1,1 @@
-struct choice{int card_id;int status_id;bool is_SP_attack;};
+struct Choice{int card_id;int status_id;bool is_SP_attack;};
