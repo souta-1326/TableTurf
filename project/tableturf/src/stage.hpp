@@ -9,7 +9,7 @@ public:
   //BoardクラスでH,W,N_squareを利用できるようにするため
   static constexpr int h = H;
   static constexpr int w = W;
-  static constexpr int n_square = N_square;
+  static constexpr int N_SQUARE = N_square;
   
   //各カードがステージ外へはみ出さない位置での(カードの向き,左上の行,左上の列)
   //カードの向き R0:0,R90:1,R180:2,R270:3

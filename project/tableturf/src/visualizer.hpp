@@ -104,7 +104,7 @@ template<class stage> void Visualizer<stage>::show(const Board<stage> &board){
   static Font font2(30);
   font2(U"P1\n□:{}\nSP:{}"_fmt(board.square_P1.count(),board.SP_point_P1)).draw(20,20);
   font2(U"P2\n□:{}\nSP:{}"_fmt(board.square_P2.count(),board.SP_point_P2)).draw(655,20);
-  font2(U"Turn:{}/{}"_fmt(board.current_turn,Board<stage>::max_turn)).draw(20,550);
+  font2(U"Turn:{}/{}"_fmt(board.current_turn,Board<stage>::TURN_MAX)).draw(20,550);
 }
 template<class stage> void Visualizer<stage>::put_both_cards_on_visualizer(){
   //まだboard_ptrが設定されていないなら何もしない

@@ -1,20 +1,19 @@
 #pragma once
 #include <bitset>
 #include <iostream>
+#include <cassert>
 #include "stage.hpp"
 #include "stage_database.hpp"
 //P1:Player1(自分) P2:Player2(相手)
 template<class stage> class Board{
 public:
-  static constexpr int max_turn = 12;
+  static constexpr int TURN_MAX = 12;
   //盤面の縦、横、マス数
-  static constexpr int N_square = stage::n_square;
-  //デッキに入るカードの枚数
-  static constexpr int N_card_in_deck = 15;
+  static constexpr int N_SQUARE = stage::N_SQUARE;
   //現在のターン数
   int current_turn;
   //P1とP2が使ったカードのID
-  int used_cards_P1[max_turn],used_cards_P2[max_turn];
+  int used_cards_P1[TURN_MAX],used_cards_P2[TURN_MAX];
   //P1の現在のSPポイントとP2の現在のSPポイント
   int SP_point_P1,SP_point_P2;
   //P1が既に使ったSPポイントとP2が既に使ったSPポイント
@@ -22,19 +21,20 @@ public:
   //P1がパスした回数とP2がパスした回数
   int pass_time_P1,pass_time_P2;
   //P1のマスとP2のマス(SP含む)
-  std::bitset<N_square> square_P1,square_P2;
+  std::bitset<N_SQUARE> square_P1,square_P2;
   //P1のSPマスとP2のSPマス
-  std::bitset<N_square> square_SP_P1,square_SP_P2;
+  std::bitset<N_SQUARE> square_SP_P1,square_SP_P2;
   //P1のSPポイントに寄与するSPマスとP2のSPポイントに寄与するSPマス
-  std::bitset<N_square> square_SP_burning_P1,square_SP_burning_P2;
+  std::bitset<N_SQUARE> square_SP_burning_P1,square_SP_burning_P2;
   //壁
-  std::bitset<N_square> wall_square;
+  std::bitset<N_SQUARE> wall_square;
   //壁を含むすべてのブロック
-  std::bitset<N_square> all_square;
+  std::bitset<N_SQUARE> all_square;
   //SPアタックでも置けないブロック(P1のSPマスとP2のSPマスと壁)
-  std::bitset<N_square> hard_square;
+  std::bitset<N_SQUARE> hard_square;
   //(左上、上、右上、左、右、左下、下、右下)[i]がブロックまたは盤面外であるか
-  std::bitset<N_square> is_there_a_block_nearby[8];
+  std::bitset<N_SQUARE> is_there_a_block_nearby[8];
+public:
   Board();
   //カードの置き方が合法かどうか
   bool is_valid_placement(const bool is_placement_P1,const int card_id,const int card_direction,const int card_pos_H,const int card_pos_W,const bool is_pass,const bool is_SP_attack) const;
@@ -47,6 +47,9 @@ public:
   void put_P1_card_without_validation(const int card_id_P1,const int status_id_P1,const bool is_SP_attack_P1);
   void put_P2_card_without_validation(const int card_id_P2,const int card_direction_P2,const int card_pos_H_P2,const int card_pos_W_P2,const bool is_pass_P2,const bool is_SP_attack_P2);
   void put_P2_card_without_validation(const int card_id_P2,const int status_id_P2,const bool is_SP_attack_P2);
+  //プレイヤーのマス数を求める
+  int square_count_P1() const;
+  int square_count_P2() const;
 };
 template<class stage> Board<stage>::Board():current_turn(1),SP_point_P1(0),SP_point_P2(0),SP_point_used_P1(0),SP_point_used_P2(0),pass_time_P1(0),pass_time_P2(0){
   //初期盤面の生成(最初のSPマスを設置)
@@ -70,7 +73,7 @@ template<class stage> bool Board<stage>::is_valid_placement(const bool is_placem
   //パスのときは問答無用でtrue
   if(status_id == -1) return true;
   //SPアタックのときはSPポイントが十分かどうか確認 不足していたらfalse
-  if(is_SP_attack && (is_placement_P1 ? SP_point_P1:SP_point_P2) < cards[card_id].SP_cost) return false;
+  if(is_SP_attack && (is_placement_P1 ? SP_point_P1:SP_point_P2) < cards[card_id].SP_COST) return false;
   //SPアタックのときは壁とSPマス、通常の時はあるマスに被っていたらfalse
   if((stage::card_covered_square[card_id][status_id]&(is_SP_attack ? hard_square:all_square)).any()) return false;
   //カードがSPアタックなら自身のSPマス,通常なら自身のあるマスに接していたらtrue,接していなかったらfalse
@@ -88,20 +91,20 @@ template<class stage> void Board<stage>::put_both_cards_without_validation(const
 }
 template<class stage> void Board<stage>::put_both_cards_without_validation(const int card_id_P1,const int status_id_P1,const bool is_SP_attack_P1,const int card_id_P2,const int status_id_P2,const bool is_SP_attack_P2){
   //status_id_P1,P2_status_idが-1の時はパス
-  const std::bitset<N_square> &card_covered_square_P1 = stage::card_covered_square[card_id_P1][status_id_P1];
-  const std::bitset<N_square> &card_covered_square_normal_P1 = stage::card_covered_square_normal[card_id_P1][status_id_P1];
-  const std::bitset<N_square> &card_covered_square_SP_P1 = stage::card_covered_square_SP[card_id_P1][status_id_P1];
-  const std::bitset<N_square> &card_covered_square_P2 = stage::card_covered_square[card_id_P2][status_id_P2];
-  const std::bitset<N_square> &card_covered_square_normal_P2 = stage::card_covered_square_normal[card_id_P2][status_id_P2];
-  const std::bitset<N_square> &card_covered_square_SP_P2 = stage::card_covered_square_SP[card_id_P2][status_id_P2];
+  const std::bitset<N_SQUARE> &card_covered_square_P1 = stage::card_covered_square[card_id_P1][status_id_P1];
+  const std::bitset<N_SQUARE> &card_covered_square_normal_P1 = stage::card_covered_square_normal[card_id_P1][status_id_P1];
+  const std::bitset<N_SQUARE> &card_covered_square_SP_P1 = stage::card_covered_square_SP[card_id_P1][status_id_P1];
+  const std::bitset<N_SQUARE> &card_covered_square_P2 = stage::card_covered_square[card_id_P2][status_id_P2];
+  const std::bitset<N_SQUARE> &card_covered_square_normal_P2 = stage::card_covered_square_normal[card_id_P2][status_id_P2];
+  const std::bitset<N_SQUARE> &card_covered_square_SP_P2 = stage::card_covered_square_SP[card_id_P2][status_id_P2];
   //SPアタックの時の前処理
   if(is_SP_attack_P1){
-    SP_point_used_P1 += cards[card_id_P1].SP_cost;
+    SP_point_used_P1 += cards[card_id_P1].SP_COST;
     //一度SPマスを取ったら取り返されることはないので、P2_squareだけ塗り返す
     square_P2 &= ~card_covered_square_P1;
   }
   if(is_SP_attack_P2){
-    SP_point_used_P2 += cards[card_id_P2].SP_cost;
+    SP_point_used_P2 += cards[card_id_P2].SP_COST;
     //一度SPマスを取ったら取り返されることはないので、P1_squareだけ塗り替えす
     square_P1 &= ~card_covered_square_P2;
   }
@@ -129,7 +132,7 @@ template<class stage> void Board<stage>::put_both_cards_without_validation(const
     square_P2 |= card_covered_square_P2;
   }
   //カードの面積が同じ場合
-  else if(cards[card_id_P1].N_square == cards[card_id_P2].N_square){
+  else if(cards[card_id_P1].N_SQUARE == cards[card_id_P2].N_SQUARE){
     //SPとSPまたは通常と通常が衝突したとき、壁となる
     wall_square |= (card_covered_square_SP_P1&card_covered_square_SP_P2)|(card_covered_square_normal_P1&card_covered_square_normal_P2);
     //壁以外を処理
@@ -139,10 +142,10 @@ template<class stage> void Board<stage>::put_both_cards_without_validation(const
     square_P2 |= square_SP_P2|(card_covered_square_normal_P2&(~card_covered_square_P1));
   }
   //P1のカードの方が面積が小さい場合
-  else if(cards[card_id_P1].N_square < cards[card_id_P2].N_square){
+  else if(cards[card_id_P1].N_SQUARE < cards[card_id_P2].N_SQUARE){
     //面積小SP>面積大SP>面積小通常>面積大通常の順にマスを取っていく
     //取られたマスはremoved_squareに保管
-    static std::bitset<N_square> added_square,removed_square;
+    static std::bitset<N_SQUARE> added_square,removed_square;
     //面積小SP
     added_square = card_covered_square_SP_P1;
     square_SP_P1 |= added_square;
@@ -162,10 +165,10 @@ template<class stage> void Board<stage>::put_both_cards_without_validation(const
     square_P2 |= added_square;
   }
   //P2のカードの方が面積が小さい場合
-  else if(cards[card_id_P1].N_square > cards[card_id_P2].N_square){
+  else if(cards[card_id_P1].N_SQUARE > cards[card_id_P2].N_SQUARE){
     //面積小SP>面積大SP>面積小通常>面積大通常の順にマスを取っていく
     //取られたマスはremoved_squareに保管
-    static std::bitset<N_square> added_square,removed_square;
+    static std::bitset<N_SQUARE> added_square,removed_square;
     //面積小SP
     added_square = card_covered_square_SP_P2;
     square_SP_P2 |= added_square;
@@ -193,7 +196,7 @@ template<class stage> void Board<stage>::put_both_cards_without_validation(const
     for(int i=0;i<8;i++) is_there_a_block_nearby[i] |= stage::card_shifted_square[card_id_P2][status_id_P2][i];
   }
   //8方向全て囲まれているかを表すbitsetを取得する
-  static std::bitset<N_square> are_there_8_blocks_nearby;
+  static std::bitset<N_SQUARE> are_there_8_blocks_nearby;
   are_there_8_blocks_nearby = is_there_a_block_nearby[0];
   for(int i=1;i<8;i++) are_there_8_blocks_nearby &= is_there_a_block_nearby[i];
   //square_SP_P1,P2_square_SPと照合
@@ -218,11 +221,11 @@ template<class stage> void Board<stage>::put_P1_card_without_validation(const in
   put_P1_card_without_validation(card_id_P1,status_id_P1,is_SP_attack_P1);
 }
 template<class stage> void Board<stage>::put_P1_card_without_validation(const int card_id_P1,const int status_id_P1,const bool is_SP_attack_P1){
-  const std::bitset<N_square> &card_covered_square_P1 = stage::card_covered_square[card_id_P1][status_id_P1];
-  const std::bitset<N_square> &card_covered_square_SP_P1 = stage::card_covered_square_SP[card_id_P1][status_id_P1];
+  const std::bitset<N_SQUARE> &card_covered_square_P1 = stage::card_covered_square[card_id_P1][status_id_P1];
+  const std::bitset<N_SQUARE> &card_covered_square_SP_P1 = stage::card_covered_square_SP[card_id_P1][status_id_P1];
   //SPアタックの時の前処理
   if(is_SP_attack_P1){
-    SP_point_used_P1 += cards[card_id_P1].SP_cost;
+    SP_point_used_P1 += cards[card_id_P1].SP_COST;
     //一度SPマスを取ったら取り返されることはないので、P2_squareだけ塗り返す
     square_P2 &= ~card_covered_square_P1;
   }
@@ -241,7 +244,7 @@ template<class stage> void Board<stage>::put_P1_card_without_validation(const in
     for(int i=0;i<8;i++) is_there_a_block_nearby[i] |= stage::card_shifted_square[card_id_P1][status_id_P1][i];
   }
   //8方向全て囲まれているかを表すbitsetを取得する
-  static std::bitset<N_square> are_there_8_blocks_nearby;
+  static std::bitset<N_SQUARE> are_there_8_blocks_nearby;
   are_there_8_blocks_nearby = is_there_a_block_nearby[0];
   for(int i=1;i<8;i++) are_there_8_blocks_nearby &= is_there_a_block_nearby[i];
   //square_SP_P1,P2_square_SPと照合
@@ -259,11 +262,11 @@ template<class stage> void Board<stage>::put_P2_card_without_validation(const in
   put_P2_card_without_validation(card_id_P2,status_id_P2,is_SP_attack_P2);
 }
 template<class stage> void Board<stage>::put_P2_card_without_validation(const int card_id_P2,const int status_id_P2,const bool is_SP_attack_P2){
-  const std::bitset<N_square> &card_covered_square_P2 = stage::card_covered_square[card_id_P2][status_id_P2];
-  const std::bitset<N_square> &card_covered_square_SP_P2 = stage::card_covered_square_SP[card_id_P2][status_id_P2];
+  const std::bitset<N_SQUARE> &card_covered_square_P2 = stage::card_covered_square[card_id_P2][status_id_P2];
+  const std::bitset<N_SQUARE> &card_covered_square_SP_P2 = stage::card_covered_square_SP[card_id_P2][status_id_P2];
   //SPアタックの時の前処理
   if(is_SP_attack_P2){
-    SP_point_used_P2 += cards[card_id_P2].SP_cost;
+    SP_point_used_P2 += cards[card_id_P2].SP_COST;
     //一度SPマスを取ったら取り返されることはないので、P1_squareだけ塗り替えす
     square_P1 &= ~card_covered_square_P2;
   }
@@ -282,7 +285,7 @@ template<class stage> void Board<stage>::put_P2_card_without_validation(const in
     for(int i=0;i<8;i++) is_there_a_block_nearby[i] |= stage::card_shifted_square[card_id_P2][status_id_P2][i];
   }
   //8方向全て囲まれているかを表すbitsetを取得する
-  static std::bitset<N_square> are_there_8_blocks_nearby;
+  static std::bitset<N_SQUARE> are_there_8_blocks_nearby;
   are_there_8_blocks_nearby = is_there_a_block_nearby[0];
   for(int i=1;i<8;i++) are_there_8_blocks_nearby &= is_there_a_block_nearby[i];
   //square_SP_P1,P2_square_SPと照合
@@ -295,3 +298,5 @@ template<class stage> void Board<stage>::put_P2_card_without_validation(const in
   SP_point_P1 = square_SP_burning_P1.count()+pass_time_P1-SP_point_used_P1;
   SP_point_P2 = square_SP_burning_P2.count()+pass_time_P2-SP_point_used_P2;
 }
+template<class stage> int Board<stage>::square_count_P1() const {return square_P1.count();}
+template<class stage> int Board<stage>::square_count_P2() const {return square_P2.count();}
