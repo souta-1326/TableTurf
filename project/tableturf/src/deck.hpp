@@ -15,6 +15,7 @@ public:
 private:
   //デッキの各カードのID
   int card_id_in_deck[N_CARD_IN_DECK];
+public:
   //現在のターン数
   int current_turn;
 public:
