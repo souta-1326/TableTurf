@@ -13,7 +13,7 @@ public:
   //最大ターン数
   static constexpr int TURN_MAX = 12;
 private:
-  //デッキの各カードのID
+  //デッキの各カードのID 先頭の4枚が手札
   int card_id_in_deck[N_CARD_IN_DECK];
 public:
   //現在のターン数

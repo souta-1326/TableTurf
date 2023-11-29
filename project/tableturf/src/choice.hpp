@@ -1,1 +1,2 @@
+#pragma once
 struct Choice{int card_id;int status_id;bool is_SP_attack;};
