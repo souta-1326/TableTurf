@@ -4,9 +4,11 @@
 #include <cassert>
 #include "stage.hpp"
 #include "stage_database.hpp"
+#include "choice.hpp"
 //P1:Player1(自分) P2:Player2(相手)
 template<class stage> class Board{
 public:
+  //最大ターン数
   static constexpr int TURN_MAX = 12;
   //盤面の縦、横、マス数
   static constexpr int N_SQUARE = stage::N_SQUARE;
@@ -41,6 +43,7 @@ public:
   bool is_valid_placement(const bool is_placement_P1,const int card_id,const int status_id,const bool is_SP_attack) const;
   //両方のプレイヤーのカードを置く
   void put_both_cards_without_validation(const int card_id_P1,const int card_direction_P1,const int card_pos_H_P1,const int card_pos_W_P1,const bool is_pass_P1,const bool is_SP_attack_P1,const int card_id_P2,const int card_direction_P2,const int card_pos_H_P2,const int card_pos_W_P2,const bool is_pass_P2,const bool is_SP_attack_P2);
+  void put_both_cards_without_validation(const Choice choice_P1,const Choice choice_P2);
   void put_both_cards_without_validation(const int card_id_P1,const int status_id_P1,const bool is_SP_attack_P1,const int card_id_P2,const int status_id_P2,const bool is_SP_attack_P2);
   //片方のプレイヤーのカードを置く(ビジュアライザ専用)
   void put_P1_card_without_validation(const int card_id_P1,const int card_direction_P1,const int card_pos_H_P1,const int card_pos_W_P1,const bool is_pass_P1,const bool is_SP_attack_P1);
@@ -88,6 +91,12 @@ template<class stage> void Board<stage>::put_both_cards_without_validation(const
   put_both_cards_without_validation(
   card_id_P1,status_id_P1,is_SP_attack_P1,
   card_id_P2,status_id_P2,is_SP_attack_P2);
+}
+template<class stage> void Board<stage>::put_both_cards_without_validation(const Choice choice_P1,const Choice choice_P2){
+  put_both_cards_without_validation(
+    choice_P1.card_id,choice_P1.status_id,choice_P1.is_SP_attack,
+    choice_P2.card_id,choice_P2.status_id,choice_P2.is_SP_attack
+  );
 }
 template<class stage> void Board<stage>::put_both_cards_without_validation(const int card_id_P1,const int status_id_P1,const bool is_SP_attack_P1,const int card_id_P2,const int status_id_P2,const bool is_SP_attack_P2){
   //status_id_P1,P2_status_idが-1の時はパス
