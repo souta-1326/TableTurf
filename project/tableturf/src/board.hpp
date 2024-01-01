@@ -154,7 +154,7 @@ template<class stage> void Board<stage>::put_both_cards_without_validation(const
   else if(cards[card_id_P1].N_SQUARE < cards[card_id_P2].N_SQUARE){
     //面積小SP>面積大SP>面積小通常>面積大通常の順にマスを取っていく
     //取られたマスはremoved_squareに保管
-    static std::bitset<N_SQUARE> added_square,removed_square;
+    std::bitset<N_SQUARE> added_square,removed_square;
     //面積小SP
     added_square = card_covered_square_SP_P1;
     square_SP_P1 |= added_square;
@@ -177,7 +177,7 @@ template<class stage> void Board<stage>::put_both_cards_without_validation(const
   else if(cards[card_id_P1].N_SQUARE > cards[card_id_P2].N_SQUARE){
     //面積小SP>面積大SP>面積小通常>面積大通常の順にマスを取っていく
     //取られたマスはremoved_squareに保管
-    static std::bitset<N_SQUARE> added_square,removed_square;
+    std::bitset<N_SQUARE> added_square,removed_square;
     //面積小SP
     added_square = card_covered_square_SP_P2;
     square_SP_P2 |= added_square;
@@ -205,7 +205,7 @@ template<class stage> void Board<stage>::put_both_cards_without_validation(const
     for(int i=0;i<8;i++) is_there_a_block_nearby[i] |= stage::card_shifted_square[card_id_P2][status_id_P2][i];
   }
   //8方向全て囲まれているかを表すbitsetを取得する
-  static std::bitset<N_SQUARE> are_there_8_blocks_nearby;
+  std::bitset<N_SQUARE> are_there_8_blocks_nearby;
   are_there_8_blocks_nearby = is_there_a_block_nearby[0];
   for(int i=1;i<8;i++) are_there_8_blocks_nearby &= is_there_a_block_nearby[i];
   //square_SP_P1,P2_square_SPと照合
@@ -253,7 +253,7 @@ template<class stage> void Board<stage>::put_P1_card_without_validation(const in
     for(int i=0;i<8;i++) is_there_a_block_nearby[i] |= stage::card_shifted_square[card_id_P1][status_id_P1][i];
   }
   //8方向全て囲まれているかを表すbitsetを取得する
-  static std::bitset<N_SQUARE> are_there_8_blocks_nearby;
+  std::bitset<N_SQUARE> are_there_8_blocks_nearby;
   are_there_8_blocks_nearby = is_there_a_block_nearby[0];
   for(int i=1;i<8;i++) are_there_8_blocks_nearby &= is_there_a_block_nearby[i];
   //square_SP_P1,P2_square_SPと照合
@@ -294,7 +294,7 @@ template<class stage> void Board<stage>::put_P2_card_without_validation(const in
     for(int i=0;i<8;i++) is_there_a_block_nearby[i] |= stage::card_shifted_square[card_id_P2][status_id_P2][i];
   }
   //8方向全て囲まれているかを表すbitsetを取得する
-  static std::bitset<N_SQUARE> are_there_8_blocks_nearby;
+  std::bitset<N_SQUARE> are_there_8_blocks_nearby;
   are_there_8_blocks_nearby = is_there_a_block_nearby[0];
   for(int i=1;i<8;i++) are_there_8_blocks_nearby &= is_there_a_block_nearby[i];
   //square_SP_P1,P2_square_SPと照合
