@@ -29,11 +29,12 @@ public:
   //手札をcard_idで選んで捨てる
   void choose_card_by_card_id(int card_id);
   //手札
-  std::vector<int> get_hand(){return {card_id_in_deck.begin(),card_id_in_deck.begin()+N_CARD_IN_HAND};}
+  std::vector<int> get_hand() const {return {card_id_in_deck.begin(),card_id_in_deck.begin()+N_CARD_IN_HAND};}
   //山札(使用済み札除く)
-  std::vector<int> get_stock(){return {card_id_in_deck.begin()+N_CARD_IN_HAND,card_id_in_deck.begin()+(N_CARD_IN_DECK-current_turn+1)};}
+  std::vector<int> get_stock() const {return {card_id_in_deck.begin()+N_CARD_IN_HAND,card_id_in_deck.begin()+(N_CARD_IN_DECK-current_turn+1)};}
   //使用済み札
-  std::vector<int> get_used_card(){return {card_id_in_deck.begin()+(N_CARD_IN_DECK-current_turn+1),card_id_in_deck.end()};}
+  std::vector<int> get_used_card() const {return {card_id_in_deck.begin()+(N_CARD_IN_DECK-current_turn+1),card_id_in_deck.end()};}
+
   const int &operator[](int index) const {return card_id_in_deck[index];}
   int &operator[](int index) {return card_id_in_deck[index];}
 };
