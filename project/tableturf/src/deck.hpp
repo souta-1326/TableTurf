@@ -28,6 +28,8 @@ public:
   void choose_card_by_index(int index);
   //手札をcard_idで選んで捨てる
   void choose_card_by_card_id(int card_id);
+  //デッキ
+  std::vector<int> get_deck() const {return card_id_in_deck;}
   //手札
   std::vector<int> get_hand() const {return {card_id_in_deck.begin(),card_id_in_deck.begin()+N_CARD_IN_HAND};}
   //山札(使用済み札除く)
