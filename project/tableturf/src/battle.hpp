@@ -54,10 +54,11 @@ template<class stage> void print_board_log(const Board<stage> &board,const Deck 
   }
   std::cout << std::endl;
 }
-template<class stage,class C1,class C2> Board<stage> Battle(C1 &agent_P1,C2 &agent_P2,Deck deck_P1,Deck deck_P2){
+template<class stage,class C1,class C2> std::vector<Board<stage>> Battle(C1 &agent_P1,C2 &agent_P2,Deck deck_P1,Deck deck_P2){
   //deckのchoose_card_by_なんとかを忘れない
   //board_P1はP1視点のboard,board_P2はP2視点のboard
   Board<stage> board_P1,board_P2;
+  std::vector<Board<stage>> board_P1_log(13);//board_P1のログ
   
   //試合開始
 
@@ -65,8 +66,9 @@ template<class stage,class C1,class C2> Board<stage> Battle(C1 &agent_P1,C2 &age
   deck_P1.reset();
   deck_P2.reset();
   //デッキの手札を任意で1回のみ入れ替える
-  if(agent_P1.change_hand(deck_P1)) deck_P1.reset();
-  if(agent_P2.change_hand(deck_P2)) deck_P2.reset();
+  if(agent_P1.redraw(deck_P1)) deck_P1.reset();
+  if(agent_P2.redraw(deck_P2)) deck_P2.reset();
+  board_P1_log[0] = board_P1;
   for(int current_turn = 1;current_turn <= 12;current_turn++){
     Choice<stage> choice_P1 = agent_P1.get_action(board_P1,deck_P1);
     Choice<stage> choice_P2 = agent_P2.get_action(board_P2,deck_P2);
@@ -85,7 +87,10 @@ template<class stage,class C1,class C2> Board<stage> Battle(C1 &agent_P1,C2 &age
     //デッキの処理
     deck_P1.choose_card_by_card_id(choice_P1.card_id);
     deck_P2.choose_card_by_card_id(choice_P2.card_id);
+
+    //盤面ログ
+    board_P1_log[current_turn] = board_P1;
   }
 
-  return board_P1;
+  return board_P1_log;
 }
