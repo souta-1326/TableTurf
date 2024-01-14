@@ -9,7 +9,7 @@
 template<class stage> class AI_random : public Agent<stage>{
  public:
   AI_random(){};
-  bool change_hand(const Deck &deck) override {return false;}
+  bool redraw(const Deck &deck) override {return false;}
   Choice<stage> get_action(const Board<stage> &board,const Deck &deck) override;
 };
 template<class stage> Choice<stage> AI_random<stage>::get_action(const Board<stage> &board,const Deck &deck){
