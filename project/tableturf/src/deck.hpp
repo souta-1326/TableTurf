@@ -22,6 +22,9 @@ public:
   int current_turn;
 public:
   Deck(const std::vector<int> &deck);
+  //used_cardsを設定
+  Deck(const std::vector<int> &deck,const std::vector<int> &used_cards);
+  Deck(const Deck &deck,const std::vector<int> &used_cards);
   //デッキをシャッフルし、リセット
   void reset();
   //手札を添字で選んで捨てる
@@ -42,6 +45,23 @@ public:
 };
 Deck::Deck(const std::vector<int> &deck):card_id_in_deck(deck){
   assert(card_id_in_deck.size() == N_CARD_IN_DECK);
+}
+Deck::Deck(const std::vector<int> &deck,const std::vector<int> &used_cards):card_id_in_deck(deck){
+  assert(card_id_in_deck.size() == N_CARD_IN_DECK);
+  current_turn = 1;
+  for(int i=0;i<N_CARD_IN_DECK-current_turn+1;){
+    if(std::find(used_cards.begin(),used_cards.end(),card_id_in_deck[i]) != used_cards.end()){
+      std::swap(card_id_in_deck[i],card_id_in_deck[N_CARD_IN_DECK-current_turn]);
+      current_turn++;
+    }
+    else i++;
+  }
+  for(int i=0;i<N_CARD_IN_HAND;i++){
+    std::swap(card_id_in_deck[i],card_id_in_deck[i+xorshift64()%(N_CARD_IN_DECK-i-(current_turn-1))]);
+  }
+}
+Deck::Deck(const Deck &deck,const std::vector<int> &used_cards){
+  *this = Deck(deck.get_deck(),used_cards);
 }
 void Deck::reset(){
   //手札をシャッフル
