@@ -1,5 +1,6 @@
 #pragma once
 #include <bitset>
+#include <vector>
 #include <iostream>
 #include <cassert>
 #include "stage.hpp"
@@ -16,7 +17,8 @@ public:
   //現在のターン数(1からスタート)
   int current_turn;
   //P1とP2が使ったカードのID(1-indexed)
-  int used_cards_P1[TURN_MAX+1],used_cards_P2[TURN_MAX+1];
+  std::vector<int> used_cards_P1,used_cards_P2;
+
   //P1の現在のSPポイントとP2の現在のSPポイント
   int SP_point_P1,SP_point_P2;
   //P1が既に使ったSPポイントとP2が既に使ったSPポイント
@@ -43,11 +45,11 @@ public:
   //detect_unnessesary_SP_attack=0:ゲーム内で出来るなら全てOK
   //detect_unnessesary_SP_attack=1:完全に無意味なSPアタック(どのマスとも被らない)を除外
   //detect_unnessesary_SP_attack=2:ほぼ無意味なSPアタック(敵のマスと被らない)を除外
-  bool is_valid_placement(const bool is_placement_P1,const int card_id,const int card_direction,const int card_pos_H,const int card_pos_W,const bool is_pass,const bool is_SP_attack,const short detect_unnessesary_SP_attack=1) const;
-  bool is_valid_placement(const bool is_placement_P1,const int card_id,const int status_id,const bool is_SP_attack,const short detect_unnessesary_SP_attack=1) const;
-  bool is_valid_placement(const bool is_placement_P1,const Choice<stage> choice,const short detect_unnessesary_SP_attack=1) const;
+  bool is_valid_placement(const bool is_placement_P1,const int card_id,const int card_direction,const int card_pos_H,const int card_pos_W,const bool is_pass,const bool is_SP_attack,const short detect_unnessesary_SP_attack=1) const noexcept;
+  bool is_valid_placement(const bool is_placement_P1,const int card_id,const int status_id,const bool is_SP_attack,const short detect_unnessesary_SP_attack=1) const noexcept;
+  bool is_valid_placement(const bool is_placement_P1,const Choice<stage> choice,const short detect_unnessesary_SP_attack=1) const noexcept;
   //デッキの手札に対する合法手リスト [手札のi枚目][SPアタックか]
-  std::vector<std::vector<std::vector<Choice<stage>>>> get_valid_choices(const bool is_placement_P1,const Deck &deck) const;
+  std::vector<std::vector<std::vector<Choice<stage>>>> get_valid_choices(const bool is_placement_P1,const Deck &deck,const bool include_pass = true) const;
   //両方のプレイヤーのカードを置く(合法チェックなし)
   void put_both_cards_without_validation(const int card_id_P1,const int card_direction_P1,const int card_pos_H_P1,const int card_pos_W_P1,const bool is_pass_P1,const bool is_SP_attack_P1,const int card_id_P2,const int card_direction_P2,const int card_pos_H_P2,const int card_pos_W_P2,const bool is_pass_P2,const bool is_SP_attack_P2);
   void put_both_cards_without_validation(const Choice<stage> choice_P1,const Choice<stage> choice_P2);
@@ -60,8 +62,14 @@ public:
   //プレイヤーのマス数を求める
   int square_count_P1() const;
   int square_count_P2() const;
+  //コンソールに盤面を出力
+  void show() const;
 };
-template<class stage> Board<stage>::Board():current_turn(1),SP_point_P1(0),SP_point_P2(0),SP_point_used_P1(0),SP_point_used_P2(0),pass_time_P1(0),pass_time_P2(0){
+template<class stage> Board<stage>::Board():
+current_turn(1),
+used_cards_P1(TURN_MAX+1),used_cards_P2(TURN_MAX+1),
+SP_point_P1(0),SP_point_P2(0),SP_point_used_P1(0),SP_point_used_P2(0),pass_time_P1(0),pass_time_P2(0)
+{
   //初期盤面の生成(最初のSPマスを設置)
   square_P1[stage::place_to_order[stage::starting_pos_H_P1][stage::starting_pos_W_P1]] = true;
   square_P2[stage::place_to_order[stage::starting_pos_H_P2][stage::starting_pos_W_P2]] = true;
@@ -73,13 +81,13 @@ template<class stage> Board<stage>::Board():current_turn(1),SP_point_P1(0),SP_po
   hard_square[stage::place_to_order[stage::starting_pos_H_P2][stage::starting_pos_W_P2]] = true;
   for(int i=0;i<8;i++) is_there_a_block_nearby[i] = stage::is_there_a_block_nearby_default[i];
 }
-template<class stage> bool Board<stage>::is_valid_placement(const bool is_placement_P1,const int card_id,const int card_direction,const int card_pos_H,const int card_pos_W,const bool is_pass,const bool is_SP_attack,const short detect_unnessesary_SP_attack) const{
+template<class stage> bool Board<stage>::is_valid_placement(const bool is_placement_P1,const int card_id,const int card_direction,const int card_pos_H,const int card_pos_W,const bool is_pass,const bool is_SP_attack,const short detect_unnessesary_SP_attack) const noexcept{
   int status_id = (is_pass ? -1:stage::card_direction_and_place_to_id[card_id][card_direction][card_pos_H][card_pos_W]);
   //もしパスでないのにも拘わらずstatus_id==-1(カードが盤面外)ならfalse
   if(!is_pass && status_id == -1) return false;
   return is_valid_placement(is_placement_P1,card_id,status_id,is_SP_attack,detect_unnessesary_SP_attack);
 }
-template<class stage> bool Board<stage>::is_valid_placement(const bool is_placement_P1,const int card_id,const int status_id,const bool is_SP_attack,const short detect_unnessesary_SP_attack) const {
+template<class stage> bool Board<stage>::is_valid_placement(const bool is_placement_P1,const int card_id,const int status_id,const bool is_SP_attack,const short detect_unnessesary_SP_attack) const noexcept{
   //パスのときは、SPアタックをちゃんとOFFにしていたらtrue
   if(status_id == -1) return !is_SP_attack;
   //SPアタックのときはSPポイントが十分かどうか確認 不足していたらfalse
@@ -95,16 +103,18 @@ template<class stage> bool Board<stage>::is_valid_placement(const bool is_placem
   (is_SP_attack ? square_SP_P1:square_P1):
   (is_SP_attack ? square_SP_P2:square_P2))).any();
 }
-template<class stage> bool Board<stage>::is_valid_placement(const bool is_placement_P1,const Choice<stage> choice,const short detect_unnessesary_SP_attack) const {
+template<class stage> bool Board<stage>::is_valid_placement(const bool is_placement_P1,const Choice<stage> choice,const short detect_unnessesary_SP_attack) const noexcept{
   return is_valid_placement(is_placement_P1,choice.card_id,choice.status_id,choice.is_SP_attack,detect_unnessesary_SP_attack);
 }
-template<class stage> std::vector<std::vector<std::vector<Choice<stage>>>> Board<stage>::get_valid_choices(const bool is_placement_P1,const Deck &deck) const {
+template<class stage> std::vector<std::vector<std::vector<Choice<stage>>>> Board<stage>::get_valid_choices(const bool is_placement_P1,const Deck &deck,const bool include_pass) const {
   std::vector<std::vector<std::vector<Choice<stage>>>> valid_choices(4,std::vector<std::vector<Choice<stage>>>(2));
   std::vector<int> hand = deck.get_hand();
   for(int i=0;i<Deck::N_CARD_IN_HAND;i++){
     int card_id = hand[i];
     for(bool is_SP_attack:{false,true}){
-      for(int status_id=-1;status_id<stage::card_status_size[card_id];status_id++){
+      //SPポイントが不足していたら走査しない
+      if(is_SP_attack && (is_placement_P1 ? SP_point_P1:SP_point_P2) < cards[card_id].SP_COST) continue;
+      for(int status_id=(include_pass ? -1:0);status_id<stage::card_status_size[card_id];status_id++){
         if(is_valid_placement(is_placement_P1,card_id,status_id,is_SP_attack)){
           valid_choices[i][is_SP_attack].emplace_back(card_id,status_id,is_SP_attack);
         }
@@ -341,3 +351,33 @@ template<class stage> void Board<stage>::put_P2_card_without_validation(const in
 }
 template<class stage> int Board<stage>::square_count_P1() const {return square_P1.count();}
 template<class stage> int Board<stage>::square_count_P2() const {return square_P2.count();}
+template<class stage> void Board<stage>::show() const {
+  const std::string color_normal_P1 = "\x1b[38;2;237;248;81m";
+  const std::string color_SP_P1 = "\x1b[38;2;243;163;58m";
+  const std::string color_SP_burning_P1 = "\x1b[38;2;255;255;89m";
+  const std::string color_normal_P2 = "\x1b[38;2;77;91;246m";
+  const std::string color_SP_P2 = "\x1b[38;2;117;239;252m";
+  const std::string color_SP_burning_P2 = "\x1b[38;2;244;255;255m";
+  const std::string wall_color = "\x1b[38;2;216;216;216m";
+  const std::string empty_color = "\x1b[38;2;20;15;39m";
+  for(int i=0;i<stage::h;i++){
+    for(int j=0;j<stage::w;j++){
+      std::string now_color = empty_color;
+      if(stage::exists_square[i][j]){
+        //現在のマスが何番目か
+        int now_order = stage::place_to_order[i][j];
+        if(square_SP_P1[now_order]) now_color = color_SP_P1;
+        else if(square_SP_P2[now_order]) now_color = color_SP_P2;
+        else if(wall_square[now_order]) now_color = wall_color;
+        else if(square_P1[now_order]) now_color = color_normal_P1;
+        else if(square_P2[now_order]) now_color = color_normal_P2;
+        else now_color = empty_color;
+        if(square_SP_burning_P1[now_order]) now_color = color_SP_burning_P1;
+        else if(square_SP_burning_P2[now_order]) now_color = color_SP_burning_P2;
+      }
+      std::cout << now_color << "■" << "\x1b[m";
+    }
+    std::cout << std::endl;
+  }
+  std::cout << std::endl;
+}
