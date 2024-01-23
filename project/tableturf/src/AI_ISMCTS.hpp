@@ -14,6 +14,7 @@ template<class stage> class AI_ISMCTS : public Agent<stage>{
  private:
   //MCTSの設定
   int num_simulations;
+  float diff_bonus;//相手とのマス差にこれをかけた値が評価値に加算される
 
   //search_actionの入力の盤面
   Board<stage> root_board_P1,root_board_P2;
@@ -34,6 +35,11 @@ template<class stage> class AI_ISMCTS : public Agent<stage>{
   // redraw用ノードを除いて全ノード共通なので、1次元vector
   std::vector<Choice<stage>> valid_actions_P1,valid_actions_P2;
 
+  //{card_id,status_id,is_SP_attack}に対応するW,Nを探す
+  //W[valid_actions_start_index[card_id][is_SP_attack]+(is_SP_attack ? 0:1)+status_id]を参照する
+  //デッキに含まれていないカードには-1を代入する
+  std::vector<std::vector<int>> valid_actions_start_index_P1,valid_actions_start_index_P2;
+
   // W is total action-value and Q=W/N is mean action-value
   // (自作のオセロAIとは異なり、子ではなく親が値を持つ)
   std::vector<std::vector<float>> W_P1,W_P2;
@@ -48,6 +54,9 @@ template<class stage> class AI_ISMCTS : public Agent<stage>{
 
   float UCB_score(float w,int n,int n_parent) const;
 
+  //ChoiceからW,Nで参照するindexに変換
+  constexpr int choice_to_valid_actions_index(const bool is_placement_P1,Choice<stage> choice) const;
+
   //{探索した葉のpos,葉で選んだindex_P1,葉で選んだindex_P2,葉での盤面P1,葉での盤面P2,葉でのdeck_P1,葉でのdeck_P2}を返す
   std::tuple<int,int,int,Board<stage>,Board<stage>,Deck,Deck> selection();
   
@@ -61,7 +70,7 @@ template<class stage> class AI_ISMCTS : public Agent<stage>{
   //simulate,evaluation,expansion,backupをする
   void simulate();
  public:
-  AI_ISMCTS(int num_simulations);
+  AI_ISMCTS(int num_simulations,float diff_bonus=0);
   bool redraw(const Deck &deck) override;
   void get_deck_P1(const Deck &deck_P1) override;
   void get_deck_P2(const Deck &deck_P2) override;
@@ -70,7 +79,9 @@ template<class stage> class AI_ISMCTS : public Agent<stage>{
   void set_root(const Board<stage> &board_P1,const Board<stage> &board_P2,const Deck &deck);
 
 };
-template<class stage> AI_ISMCTS<stage>::AI_ISMCTS(int num_simulations):num_simulations(num_simulations){
+template<class stage> AI_ISMCTS<stage>::AI_ISMCTS(int num_simulations,float diff_bonus):
+num_simulations(num_simulations),diff_bonus(diff_bonus),
+valid_actions_start_index_P1(N_card+1,std::vector<int>(2,-1)),valid_actions_start_index_P2(N_card+1,std::vector<int>(2,-1)){
   //rootとexpansionによって最終的にnum_simulations+1の長さになるので、その分メモリを確保する
   W_P1.reserve(num_simulations+1);W_P2.reserve(num_simulations+1);
   N_P1.reserve(num_simulations+1);N_P2.reserve(num_simulations+1);
@@ -81,7 +92,9 @@ template<class stage> float AI_ISMCTS<stage>::UCB_score(float w,int n,int n_pare
   //まだ未探索の子に関しては、ランダム性を持たせる
   return n==0 ? 1e9+xorshift64()%(1<<16) : w/n+std::sqrt(2*std::log(n_parent)/n);
 }
-
+template<class stage> constexpr int AI_ISMCTS<stage>::choice_to_valid_actions_index(const bool is_placement_P1,Choice<stage> choice) const{
+  return (is_placement_P1 ? valid_actions_start_index_P1:valid_actions_start_index_P2)[choice.card_id][choice.is_SP_attack]+(choice.is_SP_attack ? 0:1)+choice.status_id;
+}
 template<class stage> std::tuple<int,int,int,Board<stage>,Board<stage>,Deck,Deck> AI_ISMCTS<stage>::selection(){
   Board<stage> simulated_board_P1 = root_board_P1,simulated_board_P2 = root_board_P2;
   Deck simulated_deck_P1 = deck_P1,simulated_deck_P2 = Deck(deck_P2,root_board_P1.used_cards_P2);
@@ -108,17 +121,48 @@ template<class stage> std::tuple<int,int,int,Board<stage>,Board<stage>,Deck,Deck
     for(auto [is_placement_P1,chosen_index,hand,W,N,valid_actions]:looper){
       //UCTスコアが最大となる子を求める
       float max_UCB_score = -1e9;
-      for(int i=0;i<W.size();i++){
-        //手札にないカード、設置不可能なChoiceは除外
-        if
-        (!is_redraw_phase && 
-        (std::find(hand.begin(),hand.end(),valid_actions[i].card_id) == hand.end() ||
-        !simulated_board_P1.is_valid_placement(is_placement_P1,valid_actions[i]))) continue;
+      // for(int i=0;i<W.size();i++){
+      //   assert(i == choice_to_valid_actions_index(is_placement_P1,valid_actions[i]));
+      //   //手札にないカード、設置不可能なChoiceは除外
+      //   if
+      //   (!is_redraw_phase && 
+      //   (std::find(hand.begin(),hand.end(),valid_actions[i].card_id) == hand.end() ||
+      //   !simulated_board_P1.is_valid_placement(is_placement_P1,valid_actions[i]))) continue;
         
-        float now_UCB_score = UCB_score(W[i],N[i],n_parent);
-        if(max_UCB_score < now_UCB_score){
-          max_UCB_score = now_UCB_score;
-          chosen_index = i;
+      //   float now_UCB_score = UCB_score(W[i],N[i],n_parent);
+      //   if(max_UCB_score < now_UCB_score){
+      //     max_UCB_score = now_UCB_score;
+      //     chosen_index = i;
+      //   }
+      // }
+      if(is_redraw_phase){
+        for(int i=0;i<W.size();i++){
+          float now_UCB_score = UCB_score(W[i],N[i],n_parent);
+          if(max_UCB_score < now_UCB_score){
+            max_UCB_score = now_UCB_score;
+            chosen_index = i;
+          }
+        }
+      }
+      else{
+        for(int card_id:hand)
+        for(bool is_SP_attack:{false,true}){
+          //SPポイントが不足している場合は除外
+          if(is_SP_attack && !simulated_board_P1.is_enough_SP_point(is_placement_P1,card_id)) continue;
+          
+          for(int status_id=(is_SP_attack ? 0:-1);status_id<stage::card_status_size[card_id];status_id++){
+            int now_index = choice_to_valid_actions_index(is_placement_P1,{card_id,status_id,is_SP_attack});
+            assert(valid_actions[now_index].status_id == status_id);
+            //既に手札にあるカードになっている
+            //設置不可能なChoiceは除外
+            if(!simulated_board_P1.is_valid_placement_without_SP_point_validation(is_placement_P1,valid_actions[now_index])) continue;
+            
+            float now_UCB_score = UCB_score(W[now_index],N[now_index],n_parent);
+            if(max_UCB_score < now_UCB_score){
+              max_UCB_score = now_UCB_score;
+              chosen_index = now_index;
+            }
+          }
         }
       }
     }
@@ -159,7 +203,8 @@ template<class stage> float AI_ISMCTS<stage>::evaluation_random(Board<stage> lea
     leaf_board_P1.put_both_cards_without_validation(action_P1,action_P2.swap_player());
     leaf_board_P2.put_both_cards_without_validation(action_P2,action_P1.swap_player());
   }
-  return std::clamp(leaf_board_P1.square_count_P1()-leaf_board_P1.square_count_P2(),-1,1);
+  int square_diff = leaf_board_P1.square_count_P1()-leaf_board_P1.square_count_P2();
+  return std::clamp(square_diff,-1,1)+square_diff*diff_bonus;
 }
 template<class stage> float AI_ISMCTS<stage>::evaluation(Board<stage> leaf_board_P1,Board<stage> leaf_board_P2,Deck leaf_deck_P1,Deck leaf_deck_P2) const {
   assert(leaf_board_P1.current_turn == leaf_board_P2.current_turn && leaf_board_P1.current_turn == leaf_deck_P1.current_turn && leaf_board_P1.current_turn == leaf_deck_P2.current_turn);
@@ -226,9 +271,18 @@ template<class stage> void AI_ISMCTS<stage>::get_deck_P1(const Deck &deck_P1){
   valid_actions_P1.clear();
   for(int card_id:deck_P1.get_deck()){
     for(bool is_SP_attack:{false,true}){
-      for(int status_id=-1;status_id<stage::card_status_size[card_id];status_id++){
+      for(int status_id=(is_SP_attack ? 0:-1);status_id<stage::card_status_size[card_id];status_id++){
         valid_actions_P1.emplace_back(card_id,status_id,is_SP_attack);
       }
+    }
+  }
+  //valid_actions_start_index_P1を作成
+  int now_start_index = 0;
+  for(int card_id:deck_P1.get_deck()){
+    for(bool is_SP_attack:{false,true}){
+      valid_actions_start_index_P1[card_id][is_SP_attack] = now_start_index;
+      //通常置きの場合はパスを含める
+      now_start_index += stage::card_status_size[card_id]+(is_SP_attack ? 0:1);
     }
   }
 }
@@ -238,9 +292,18 @@ template<class stage> void AI_ISMCTS<stage>::get_deck_P2(const Deck &deck_P2){
   valid_actions_P2.clear();
   for(int card_id:deck_P2.get_deck()){
     for(bool is_SP_attack:{false,true}){
-      for(int status_id=-1;status_id<stage::card_status_size[card_id];status_id++){
+      for(int status_id=(is_SP_attack ? 0:-1);status_id<stage::card_status_size[card_id];status_id++){
         valid_actions_P2.emplace_back(card_id,status_id,is_SP_attack);
       }
+    }
+  }
+  //valid_actions_start_index_P2を作成
+  int now_start_index = 0;
+  for(int card_id:deck_P2.get_deck()){
+    for(bool is_SP_attack:{false,true}){
+      valid_actions_start_index_P2[card_id][is_SP_attack] = now_start_index;
+      //通常置きの場合はパスを含める
+      now_start_index += stage::card_status_size[card_id]+(is_SP_attack ? 0:1);
     }
   }
 }
@@ -259,7 +322,7 @@ template<class stage> bool AI_ISMCTS<stage>::redraw(const Deck &deck){
 
   //before_root_current_turnを更新
   before_root_current_turn = root_current_turn;
-  
+
   return do_redraw_deck;
 }
 template<class stage> Choice<stage> AI_ISMCTS<stage>::get_action(const Board<stage> &board_P1,const Board<stage> &board_P2,const Deck &deck){
@@ -280,5 +343,6 @@ template<class stage> Choice<stage> AI_ISMCTS<stage>::get_action(const Board<sta
   //before_root_current_turnを更新
   before_root_current_turn = root_current_turn;
 
+  std::cerr << max_N << " " << valid_actions_P1[chosen_action_pos].card_id << " " << W_P1[root_pos][chosen_action_pos]/N_P1[root_pos][chosen_action_pos] << std::endl;
   return valid_actions_P1[chosen_action_pos];
 }

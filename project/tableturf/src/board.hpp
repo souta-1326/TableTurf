@@ -41,13 +41,18 @@ public:
   std::bitset<N_SQUARE> is_there_a_block_nearby[8];
 public:
   Board();
+  //SPポイントが足りているかどうか
+  bool is_enough_SP_point(const bool is_placement_P1,const int card_id) const;
   //カードの置き方が合法かどうか
   //detect_unnessesary_SP_attack=0:ゲーム内で出来るなら全てOK
   //detect_unnessesary_SP_attack=1:完全に無意味なSPアタック(どのマスとも被らない)を除外
   //detect_unnessesary_SP_attack=2:ほぼ無意味なSPアタック(敵のマスと被らない)を除外
-  bool is_valid_placement(const bool is_placement_P1,const int card_id,const int card_direction,const int card_pos_H,const int card_pos_W,const bool is_pass,const bool is_SP_attack,const short detect_unnessesary_SP_attack=1) const noexcept;
-  bool is_valid_placement(const bool is_placement_P1,const int card_id,const int status_id,const bool is_SP_attack,const short detect_unnessesary_SP_attack=1) const noexcept;
-  bool is_valid_placement(const bool is_placement_P1,const Choice<stage> choice,const short detect_unnessesary_SP_attack=1) const noexcept;
+  constexpr bool is_valid_placement(const bool is_placement_P1,const int card_id,const int card_direction,const int card_pos_H,const int card_pos_W,const bool is_pass,const bool is_SP_attack,const short detect_unnessesary_SP_attack=1) const noexcept;
+  constexpr bool is_valid_placement(const bool is_placement_P1,const int card_id,const int status_id,const bool is_SP_attack,const short detect_unnessesary_SP_attack=1) const noexcept;
+  constexpr bool is_valid_placement(const bool is_placement_P1,const Choice<stage> choice,const short detect_unnessesary_SP_attack=1) const noexcept;
+  //SPポイントが足りているかの判断を行わない(高速化のため)
+  constexpr bool is_valid_placement_without_SP_point_validation(const bool is_placement_P1,const int card_id,const int status_id,const bool is_SP_attack,const short detect_unnessesary_SP_attack=1) const noexcept;
+  constexpr bool is_valid_placement_without_SP_point_validation(const bool is_placement_P1,const Choice<stage> choice,const short detect_unnessesary_SP_attack=1) const noexcept;
   //デッキの手札に対する合法手リスト [手札のi枚目][SPアタックか]
   std::vector<std::vector<std::vector<Choice<stage>>>> get_valid_choices(const bool is_placement_P1,const Deck &deck,const bool include_pass = true) const;
   //両方のプレイヤーのカードを置く(合法チェックなし)
@@ -81,17 +86,21 @@ SP_point_P1(0),SP_point_P2(0),SP_point_used_P1(0),SP_point_used_P2(0),pass_time_
   hard_square[stage::place_to_order[stage::starting_pos_H_P2][stage::starting_pos_W_P2]] = true;
   for(int i=0;i<8;i++) is_there_a_block_nearby[i] = stage::is_there_a_block_nearby_default[i];
 }
-template<class stage> bool Board<stage>::is_valid_placement(const bool is_placement_P1,const int card_id,const int card_direction,const int card_pos_H,const int card_pos_W,const bool is_pass,const bool is_SP_attack,const short detect_unnessesary_SP_attack) const noexcept{
+template<class stage> bool Board<stage>::is_enough_SP_point(const bool is_placement_P1,const int card_id) const {
+  return (is_placement_P1 ? SP_point_P1:SP_point_P2) >= cards[card_id].SP_COST;
+}
+template<class stage> constexpr bool Board<stage>::is_valid_placement(const bool is_placement_P1,const int card_id,const int card_direction,const int card_pos_H,const int card_pos_W,const bool is_pass,const bool is_SP_attack,const short detect_unnessesary_SP_attack) const noexcept{
   int status_id = (is_pass ? -1:stage::card_direction_and_place_to_id[card_id][card_direction][card_pos_H][card_pos_W]);
   //もしパスでないのにも拘わらずstatus_id==-1(カードが盤面外)ならfalse
   if(!is_pass && status_id == -1) return false;
   return is_valid_placement(is_placement_P1,card_id,status_id,is_SP_attack,detect_unnessesary_SP_attack);
 }
-template<class stage> bool Board<stage>::is_valid_placement(const bool is_placement_P1,const int card_id,const int status_id,const bool is_SP_attack,const short detect_unnessesary_SP_attack) const noexcept{
+template<class stage> constexpr bool Board<stage>::is_valid_placement(const bool is_placement_P1,const int card_id,const int status_id,const bool is_SP_attack,const short detect_unnessesary_SP_attack) const noexcept{
   //パスのときは、SPアタックをちゃんとOFFにしていたらtrue
   if(status_id == -1) return !is_SP_attack;
   //SPアタックのときはSPポイントが十分かどうか確認 不足していたらfalse
-  if(is_SP_attack && (is_placement_P1 ? SP_point_P1:SP_point_P2) < cards[card_id].SP_COST) return false;
+  //if(is_SP_attack && (is_placement_P1 ? SP_point_P1:SP_point_P2) < cards[card_id].SP_COST) return false;
+  if(is_SP_attack && !is_enough_SP_point(is_placement_P1,card_id)) return false;
   //SPアタックのときは壁とSPマス、通常の時はあるマスに被っていたらfalse
   if((stage::card_covered_square[card_id][status_id]&(is_SP_attack ? hard_square:all_square)).any()) return false;
   //無駄なSPアタックを、detect_unnessesary_SP_attackの値に基づいて除外
@@ -103,8 +112,25 @@ template<class stage> bool Board<stage>::is_valid_placement(const bool is_placem
   (is_SP_attack ? square_SP_P1:square_P1):
   (is_SP_attack ? square_SP_P2:square_P2))).any();
 }
-template<class stage> bool Board<stage>::is_valid_placement(const bool is_placement_P1,const Choice<stage> choice,const short detect_unnessesary_SP_attack) const noexcept{
+template<class stage> constexpr bool Board<stage>::is_valid_placement(const bool is_placement_P1,const Choice<stage> choice,const short detect_unnessesary_SP_attack) const noexcept{
   return is_valid_placement(is_placement_P1,choice.card_id,choice.status_id,choice.is_SP_attack,detect_unnessesary_SP_attack);
+}
+template<class stage> constexpr bool Board<stage>::is_valid_placement_without_SP_point_validation(const bool is_placement_P1,const int card_id,const int status_id,const bool is_SP_attack,const short detect_unnessesary_SP_attack) const noexcept{
+  //パスのときは、SPアタックをちゃんとOFFにしていたらtrue
+  if(status_id == -1) return !is_SP_attack;
+  //SPアタックのときは壁とSPマス、通常の時はあるマスに被っていたらfalse
+  if((stage::card_covered_square[card_id][status_id]&(is_SP_attack ? hard_square:all_square)).any()) return false;
+  //無駄なSPアタックを、detect_unnessesary_SP_attackの値に基づいて除外
+  if(is_SP_attack && detect_unnessesary_SP_attack>=1 &&
+  (stage::card_covered_square[card_id][status_id]&(detect_unnessesary_SP_attack == 2 ? (is_placement_P1 ? square_P2:square_P1):(all_square))).none()) return false;
+  //カードがSPアタックなら自身のSPマス,通常なら自身のあるマスに接していたらtrue,接していなかったらfalse
+  return (stage::card_around_square[card_id][status_id]&
+  (is_placement_P1 ?
+  (is_SP_attack ? square_SP_P1:square_P1):
+  (is_SP_attack ? square_SP_P2:square_P2))).any();
+}
+template<class stage> constexpr bool Board<stage>::is_valid_placement_without_SP_point_validation(const bool is_placement_P1,const Choice<stage> choice,const short detect_unnessesary_SP_attack) const noexcept{
+  return is_valid_placement_without_SP_point_validation(is_placement_P1,choice.card_id,choice.status_id,choice.is_SP_attack,detect_unnessesary_SP_attack);
 }
 template<class stage> std::vector<std::vector<std::vector<Choice<stage>>>> Board<stage>::get_valid_choices(const bool is_placement_P1,const Deck &deck,const bool include_pass) const {
   std::vector<std::vector<std::vector<Choice<stage>>>> valid_choices(4,std::vector<std::vector<Choice<stage>>>(2));
@@ -113,7 +139,8 @@ template<class stage> std::vector<std::vector<std::vector<Choice<stage>>>> Board
     int card_id = hand[i];
     for(bool is_SP_attack:{false,true}){
       //SPポイントが不足していたら走査しない
-      if(is_SP_attack && (is_placement_P1 ? SP_point_P1:SP_point_P2) < cards[card_id].SP_COST) continue;
+      //if(is_SP_attack && (is_placement_P1 ? SP_point_P1:SP_point_P2) < cards[card_id].SP_COST) continue;
+      if(is_SP_attack && !is_enough_SP_point(is_placement_P1,card_id)) continue;
       for(int status_id=(include_pass ? -1:0);status_id<stage::card_status_size[card_id];status_id++){
         if(is_valid_placement(is_placement_P1,card_id,status_id,is_SP_attack)){
           valid_choices[i][is_SP_attack].emplace_back(card_id,status_id,is_SP_attack);
@@ -243,7 +270,7 @@ template<class stage> void Board<stage>::put_both_cards_without_validation(const
   std::bitset<N_SQUARE> are_there_8_blocks_nearby;
   are_there_8_blocks_nearby = is_there_a_block_nearby[0];
   for(int i=1;i<8;i++) are_there_8_blocks_nearby &= is_there_a_block_nearby[i];
-  //square_SP_P1,P2_square_SPと照合
+  //square_SP_P1,square_SP_P2と照合
   square_SP_burning_P1 = square_SP_P1&are_there_8_blocks_nearby;
   square_SP_burning_P2 = square_SP_P2&are_there_8_blocks_nearby;
 
@@ -254,7 +281,7 @@ template<class stage> void Board<stage>::put_both_cards_without_validation(const
   //SPポイントを更新
   SP_point_P1 = square_SP_burning_P1.count()+pass_time_P1-SP_point_used_P1;
   SP_point_P2 = square_SP_burning_P2.count()+pass_time_P2-SP_point_used_P2;
-  //P1_used_cardsとP2_used_cardsを更新
+  //used_cards_P1とused_cards_P2を更新
   used_cards_P1[current_turn] = card_id_P1;
   used_cards_P2[current_turn] = card_id_P2;
   //ターン数を更新
@@ -363,6 +390,7 @@ template<class stage> void Board<stage>::show() const {
   for(int i=0;i<stage::h;i++){
     for(int j=0;j<stage::w;j++){
       std::string now_color = empty_color;
+      std::string block_char = "■";
       if(stage::exists_square[i][j]){
         //現在のマスが何番目か
         int now_order = stage::place_to_order[i][j];
@@ -372,10 +400,9 @@ template<class stage> void Board<stage>::show() const {
         else if(square_P1[now_order]) now_color = color_normal_P1;
         else if(square_P2[now_order]) now_color = color_normal_P2;
         else now_color = empty_color;
-        if(square_SP_burning_P1[now_order]) now_color = color_SP_burning_P1;
-        else if(square_SP_burning_P2[now_order]) now_color = color_SP_burning_P2;
+        if(square_SP_burning_P1[now_order] || square_SP_burning_P2[now_order]) block_char = "S";
       }
-      std::cout << now_color << "■" << "\x1b[m";
+      std::cout << now_color << block_char << "\x1b[m";
     }
     std::cout << std::endl;
   }
