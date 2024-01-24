@@ -47,23 +47,25 @@ public:
   //detect_unnessesary_SP_attack=0:ゲーム内で出来るなら全てOK
   //detect_unnessesary_SP_attack=1:完全に無意味なSPアタック(どのマスとも被らない)を除外
   //detect_unnessesary_SP_attack=2:ほぼ無意味なSPアタック(敵のマスと被らない)を除外
-  constexpr bool is_valid_placement(const bool is_placement_P1,const int card_id,const int card_direction,const int card_pos_H,const int card_pos_W,const bool is_pass,const bool is_SP_attack,const short detect_unnessesary_SP_attack=1) const noexcept;
-  constexpr bool is_valid_placement(const bool is_placement_P1,const int card_id,const int status_id,const bool is_SP_attack,const short detect_unnessesary_SP_attack=1) const noexcept;
-  constexpr bool is_valid_placement(const bool is_placement_P1,const Choice<stage> choice,const short detect_unnessesary_SP_attack=1) const noexcept;
+  constexpr bool is_valid_placement(const bool is_placement_P1,const int card_id,const int card_direction,const int card_pos_H,const int card_pos_W,const bool is_pass,const bool is_SP_attack,const short detect_unnessesary_SP_attack=2) const noexcept;
+  constexpr bool is_valid_placement(const bool is_placement_P1,const int card_id,const int status_id,const bool is_SP_attack,const short detect_unnessesary_SP_attack=2) const noexcept;
+  constexpr bool is_valid_placement(const bool is_placement_P1,const Choice<stage> choice,const short detect_unnessesary_SP_attack=2) const noexcept;
   //SPポイントが足りているかの判断を行わない(高速化のため)
-  constexpr bool is_valid_placement_without_SP_point_validation(const bool is_placement_P1,const int card_id,const int status_id,const bool is_SP_attack,const short detect_unnessesary_SP_attack=1) const noexcept;
-  constexpr bool is_valid_placement_without_SP_point_validation(const bool is_placement_P1,const Choice<stage> choice,const short detect_unnessesary_SP_attack=1) const noexcept;
+  constexpr bool is_valid_placement_without_SP_point_validation(const bool is_placement_P1,const int card_id,const int status_id,const bool is_SP_attack,const short detect_unnessesary_SP_attack=2) const noexcept;
+  constexpr bool is_valid_placement_without_SP_point_validation(const bool is_placement_P1,const Choice<stage> choice,const short detect_unnessesary_SP_attack=2) const noexcept;
   //デッキの手札に対する合法手リスト [手札のi枚目][SPアタックか]
   std::vector<std::vector<std::vector<Choice<stage>>>> get_valid_choices(const bool is_placement_P1,const Deck &deck,const bool include_pass = true) const;
   //両方のプレイヤーのカードを置く(合法チェックなし)
   void put_both_cards_without_validation(const int card_id_P1,const int card_direction_P1,const int card_pos_H_P1,const int card_pos_W_P1,const bool is_pass_P1,const bool is_SP_attack_P1,const int card_id_P2,const int card_direction_P2,const int card_pos_H_P2,const int card_pos_W_P2,const bool is_pass_P2,const bool is_SP_attack_P2);
   void put_both_cards_without_validation(const Choice<stage> choice_P1,const Choice<stage> choice_P2);
   void put_both_cards_without_validation(const int card_id_P1,const int status_id_P1,const bool is_SP_attack_P1,const int card_id_P2,const int status_id_P2,const bool is_SP_attack_P2);
-  //片方のプレイヤーのカードを置く(ビジュアライザ専用)
+  //片方のプレイヤーのカードを置く
   void put_P1_card_without_validation(const int card_id_P1,const int card_direction_P1,const int card_pos_H_P1,const int card_pos_W_P1,const bool is_pass_P1,const bool is_SP_attack_P1);
   void put_P1_card_without_validation(const int card_id_P1,const int status_id_P1,const bool is_SP_attack_P1);
+  void put_P1_card_without_validation(const Choice<stage> choice_P1);
   void put_P2_card_without_validation(const int card_id_P2,const int card_direction_P2,const int card_pos_H_P2,const int card_pos_W_P2,const bool is_pass_P2,const bool is_SP_attack_P2);
   void put_P2_card_without_validation(const int card_id_P2,const int status_id_P2,const bool is_SP_attack_P2);
+  void put_P2_card_without_validation(const Choice<stage> choice_P2);
   //プレイヤーのマス数を求める
   int square_count_P1() const;
   int square_count_P2() const;
@@ -89,6 +91,7 @@ SP_point_P1(0),SP_point_P2(0),SP_point_used_P1(0),SP_point_used_P2(0),pass_time_
 template<class stage> bool Board<stage>::is_enough_SP_point(const bool is_placement_P1,const int card_id) const {
   return (is_placement_P1 ? SP_point_P1:SP_point_P2) >= cards[card_id].SP_COST;
 }
+
 template<class stage> constexpr bool Board<stage>::is_valid_placement(const bool is_placement_P1,const int card_id,const int card_direction,const int card_pos_H,const int card_pos_W,const bool is_pass,const bool is_SP_attack,const short detect_unnessesary_SP_attack) const noexcept{
   int status_id = (is_pass ? -1:stage::card_direction_and_place_to_id[card_id][card_direction][card_pos_H][card_pos_W]);
   //もしパスでないのにも拘わらずstatus_id==-1(カードが盤面外)ならfalse
@@ -115,6 +118,7 @@ template<class stage> constexpr bool Board<stage>::is_valid_placement(const bool
 template<class stage> constexpr bool Board<stage>::is_valid_placement(const bool is_placement_P1,const Choice<stage> choice,const short detect_unnessesary_SP_attack) const noexcept{
   return is_valid_placement(is_placement_P1,choice.card_id,choice.status_id,choice.is_SP_attack,detect_unnessesary_SP_attack);
 }
+
 template<class stage> constexpr bool Board<stage>::is_valid_placement_without_SP_point_validation(const bool is_placement_P1,const int card_id,const int status_id,const bool is_SP_attack,const short detect_unnessesary_SP_attack) const noexcept{
   //パスのときは、SPアタックをちゃんとOFFにしていたらtrue
   if(status_id == -1) return !is_SP_attack;
@@ -132,6 +136,7 @@ template<class stage> constexpr bool Board<stage>::is_valid_placement_without_SP
 template<class stage> constexpr bool Board<stage>::is_valid_placement_without_SP_point_validation(const bool is_placement_P1,const Choice<stage> choice,const short detect_unnessesary_SP_attack) const noexcept{
   return is_valid_placement_without_SP_point_validation(is_placement_P1,choice.card_id,choice.status_id,choice.is_SP_attack,detect_unnessesary_SP_attack);
 }
+
 template<class stage> std::vector<std::vector<std::vector<Choice<stage>>>> Board<stage>::get_valid_choices(const bool is_placement_P1,const Deck &deck,const bool include_pass) const {
   std::vector<std::vector<std::vector<Choice<stage>>>> valid_choices(4,std::vector<std::vector<Choice<stage>>>(2));
   std::vector<int> hand = deck.get_hand();
@@ -150,6 +155,7 @@ template<class stage> std::vector<std::vector<std::vector<Choice<stage>>>> Board
   }
   return valid_choices;
 }
+
 template<class stage> void Board<stage>::put_both_cards_without_validation(const int card_id_P1,const int card_direction_P1,const int card_pos_H_P1,const int card_pos_W_P1,const bool is_pass_P1,const bool is_SP_attack_P1,const int card_id_P2,const int card_direction_P2,const int card_pos_H_P2,const int card_pos_W_P2,const bool is_pass_P2,const bool is_SP_attack_P2){
   put_both_cards_without_validation({card_id_P1,card_direction_P1,card_pos_H_P1,card_pos_W_P1,is_pass_P1,is_SP_attack_P1},{card_id_P2,card_direction_P2,card_pos_H_P2,card_pos_W_P2,is_pass_P2,is_SP_attack_P2});
 }
@@ -294,6 +300,7 @@ template<class stage> void Board<stage>::put_both_cards_without_validation(const
   assert((square_SP_burning_P1&square_SP_P1) == square_SP_burning_P1);
   assert((square_SP_burning_P2&square_SP_P2) == square_SP_burning_P2);
 }
+
 template<class stage> void Board<stage>::put_P1_card_without_validation(const int card_id_P1,const int card_direction_P1,const int card_pos_H_P1,const int card_pos_W_P1,const bool is_pass_P1,const bool is_SP_attack_P1){
   int status_id_P1 = (is_pass_P1 ? -1:stage::card_direction_and_place_to_id[card_id_P1][card_direction_P1][card_pos_H_P1][card_pos_W_P1]);
   put_P1_card_without_validation(card_id_P1,status_id_P1,is_SP_attack_P1);
@@ -335,6 +342,10 @@ template<class stage> void Board<stage>::put_P1_card_without_validation(const in
   SP_point_P1 = square_SP_burning_P1.count()+pass_time_P1-SP_point_used_P1;
   SP_point_P2 = square_SP_burning_P2.count()+pass_time_P2-SP_point_used_P2;
 }
+template<class stage> void Board<stage>::put_P1_card_without_validation(const Choice<stage> choice_P1){
+  put_P1_card_without_validation(choice_P1.card_id,choice_P1.status_id,choice_P1.is_SP_attack);
+}
+
 template<class stage> void Board<stage>::put_P2_card_without_validation(const int card_id_P2,const int card_direction_P2,const int card_pos_H_P2,const int card_pos_W_P2,const bool is_pass_P2,const bool is_SP_attack_P2){
   int status_id_P2 = (is_pass_P2 ? -1:stage::card_direction_and_place_to_id[card_id_P2][card_direction_P2][card_pos_H_P2][card_pos_W_P2]);
   put_P2_card_without_validation(card_id_P2,status_id_P2,is_SP_attack_P2);
@@ -376,8 +387,13 @@ template<class stage> void Board<stage>::put_P2_card_without_validation(const in
   SP_point_P1 = square_SP_burning_P1.count()+pass_time_P1-SP_point_used_P1;
   SP_point_P2 = square_SP_burning_P2.count()+pass_time_P2-SP_point_used_P2;
 }
+template<class stage> void Board<stage>::put_P2_card_without_validation(const Choice<stage> choice_P2){
+  put_P2_card_without_validation(choice_P2.card_id,choice_P2.status_id,choice_P2.is_SP_attack);
+}
+
 template<class stage> int Board<stage>::square_count_P1() const {return square_P1.count();}
 template<class stage> int Board<stage>::square_count_P2() const {return square_P2.count();}
+
 template<class stage> void Board<stage>::show() const {
   const std::string color_normal_P1 = "\x1b[38;2;237;248;81m";
   const std::string color_SP_P1 = "\x1b[38;2;243;163;58m";
