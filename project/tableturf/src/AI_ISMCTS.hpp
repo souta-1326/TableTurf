@@ -16,6 +16,7 @@ template<class stage> class AI_ISMCTS : public Agent<stage>{
   //MCTSの設定
   int num_simulations;
   float diff_bonus;//相手とのマス差にこれをかけた値が評価値に加算される
+  bool use_evaluation_greedy;
 
   //search_actionの入力の盤面
   Board<stage> root_board_P1,root_board_P2;
@@ -72,7 +73,7 @@ template<class stage> class AI_ISMCTS : public Agent<stage>{
   //simulate,evaluation,expansion,backupをする
   void simulate();
  public:
-  AI_ISMCTS(int num_simulations,float diff_bonus=0);
+  AI_ISMCTS(int num_simulations,float diff_bonus=0,bool use_evaluation_greedy=true);
   bool redraw(const Deck &deck) override;
   void get_deck_P1(const Deck &deck_P1) override;
   void get_deck_P2(const Deck &deck_P2) override;
@@ -81,8 +82,8 @@ template<class stage> class AI_ISMCTS : public Agent<stage>{
   void set_root(const Board<stage> &board_P1,const Board<stage> &board_P2,const Deck &deck);
 
 };
-template<class stage> AI_ISMCTS<stage>::AI_ISMCTS(int num_simulations,float diff_bonus):
-num_simulations(num_simulations),diff_bonus(diff_bonus),
+template<class stage> AI_ISMCTS<stage>::AI_ISMCTS(int num_simulations,float diff_bonus,bool use_evaluation_greedy):
+num_simulations(num_simulations),diff_bonus(diff_bonus),use_evaluation_greedy(use_evaluation_greedy),
 valid_actions_start_index_P1(N_card+1,std::vector<int>(2,-1)),valid_actions_start_index_P2(N_card+1,std::vector<int>(2,-1)){
   //rootとexpansionによって最終的にnum_simulations+1の長さになるので、その分メモリを確保する
   W_P1.reserve(num_simulations+1);W_P2.reserve(num_simulations+1);
@@ -221,7 +222,8 @@ template<class stage> float AI_ISMCTS<stage>::evaluation_greedy(Board<stage> lea
 }
 template<class stage> float AI_ISMCTS<stage>::evaluation(Board<stage> leaf_board_P1,Board<stage> leaf_board_P2,Deck leaf_deck_P1,Deck leaf_deck_P2) const {
   assert(leaf_board_P1.current_turn == leaf_board_P2.current_turn && leaf_board_P1.current_turn == leaf_deck_P1.current_turn && leaf_board_P1.current_turn == leaf_deck_P2.current_turn);
-  return evaluation_greedy(leaf_board_P1,leaf_board_P2,leaf_deck_P1,leaf_deck_P2);
+  return (use_evaluation_greedy ? 
+  evaluation_greedy(leaf_board_P1,leaf_board_P2,leaf_deck_P1,leaf_deck_P2):evaluation_random(leaf_board_P1,leaf_board_P2,leaf_deck_P1,leaf_deck_P2));
 }
 template<class stage> void AI_ISMCTS<stage>::backup(const int leaf_pos,const int leaf_index_P1,const int leaf_index_P2,const float value_P1){
   W_P1[leaf_pos][leaf_index_P1] += value_P1;
