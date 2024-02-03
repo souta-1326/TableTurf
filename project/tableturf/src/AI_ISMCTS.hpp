@@ -54,6 +54,9 @@ template<class stage> class AI_ISMCTS : public Agent<stage>{
   //pos_map[{parentのpos,1Pのindex,2Pのindex}] = child_pos
   std::unordered_map<std::tuple<int,int,int>,int,hash_tuple> pos_map;
 
+  //一度でもselectionで探索されたノードの数
+  int used_node_count = 0;
+
   float UCB_score(float w,int n,int n_parent) const;
 
   //ChoiceからW,Nで参照するindexに変換
@@ -80,7 +83,6 @@ template<class stage> class AI_ISMCTS : public Agent<stage>{
   Choice<stage> get_action(const Board<stage> &board_P1,const Board<stage> &board_P2,const Deck &deck) override;
   
   void set_root(const Board<stage> &board_P1,const Board<stage> &board_P2,const Deck &deck);
-
 };
 template<class stage> AI_ISMCTS<stage>::AI_ISMCTS(int num_simulations,float diff_bonus,bool use_evaluation_greedy):
 num_simulations(num_simulations),diff_bonus(diff_bonus),use_evaluation_greedy(use_evaluation_greedy),
@@ -91,13 +93,16 @@ valid_actions_start_index_P1(N_card+1,std::vector<int>(2,-1)),valid_actions_star
   parent_pos.reserve(num_simulations+1);
   pos_map.reserve(num_simulations+2);//unordered_mapは処理系によっては1要素多く確保する必要があるらしいので、念の為
 }
+
 template<class stage> float AI_ISMCTS<stage>::UCB_score(float w,int n,int n_parent) const {
   //まだ未探索の子に関しては、ランダム性を持たせる
   return n==0 ? 1e9+xorshift64()%(1<<16) : w/n+std::sqrt(2*std::log(n_parent)/n);
 }
+
 template<class stage> constexpr int AI_ISMCTS<stage>::choice_to_valid_actions_index(const bool is_placement_P1,Choice<stage> choice) const{
   return (is_placement_P1 ? valid_actions_start_index_P1:valid_actions_start_index_P2)[choice.card_id][choice.is_SP_attack]+(choice.is_SP_attack ? 0:1)+choice.status_id;
 }
+
 template<class stage> std::tuple<int,int,int,Board<stage>,Board<stage>,Deck,Deck> AI_ISMCTS<stage>::selection(){
   Board<stage> simulated_board_P1 = root_board_P1,simulated_board_P2 = root_board_P2;
   Deck simulated_deck_P1 = deck_P1,simulated_deck_P2 = Deck(deck_P2,root_board_P1.used_cards_P2);
@@ -106,6 +111,14 @@ template<class stage> std::tuple<int,int,int,Board<stage>,Board<stage>,Deck,Deck
 
   int now_pos = root_pos;
   while(true){
+    //
+    if(W_P1[now_pos].empty()){
+      W_P1[now_pos].resize(valid_actions_P1.size());
+      N_P1[now_pos].resize(valid_actions_P1.size());
+      W_P2[now_pos].resize(valid_actions_P2.size());
+      N_P2[now_pos].resize(valid_actions_P2.size());
+      used_node_count++;
+    }
     //親の探索回数
     int n_parent = std::accumulate(N_P1[now_pos].begin(),N_P1[now_pos].end(),0);
 
@@ -124,20 +137,6 @@ template<class stage> std::tuple<int,int,int,Board<stage>,Board<stage>,Deck,Deck
     for(auto [is_placement_P1,chosen_index,hand,W,N,valid_actions]:looper){
       //UCTスコアが最大となる子を求める
       float max_UCB_score = -1e9;
-      // for(int i=0;i<W.size();i++){
-      //   assert(i == choice_to_valid_actions_index(is_placement_P1,valid_actions[i]));
-      //   //手札にないカード、設置不可能なChoiceは除外
-      //   if
-      //   (!is_redraw_phase && 
-      //   (std::find(hand.begin(),hand.end(),valid_actions[i].card_id) == hand.end() ||
-      //   !simulated_board_P1.is_valid_placement(is_placement_P1,valid_actions[i]))) continue;
-        
-      //   float now_UCB_score = UCB_score(W[i],N[i],n_parent);
-      //   if(max_UCB_score < now_UCB_score){
-      //     max_UCB_score = now_UCB_score;
-      //     chosen_index = i;
-      //   }
-      // }
       if(is_redraw_phase){
         for(int i=0;i<W.size();i++){
           float now_UCB_score = UCB_score(W[i],N[i],n_parent);
@@ -190,14 +189,16 @@ template<class stage> std::tuple<int,int,int,Board<stage>,Board<stage>,Deck,Deck
     else now_pos = pos_map[{now_pos,chosen_index_P1,chosen_index_P2}];
   }
 }
+
 template<class stage> void AI_ISMCTS<stage>::expansion(const int leaf_pos,const int leaf_index_P1,const int leaf_index_P2){
   pos_map[{leaf_pos,leaf_index_P1,leaf_index_P2}] = W_P1.size();
-  W_P1.emplace_back(std::vector<float>(valid_actions_P1.size()));
-  N_P1.emplace_back(std::vector<int>(valid_actions_P1.size()));
-  W_P2.emplace_back(std::vector<float>(valid_actions_P2.size()));
-  N_P2.emplace_back(std::vector<int>(valid_actions_P2.size()));
+  W_P1.emplace_back(std::vector<float>());
+  N_P1.emplace_back(std::vector<int>());
+  W_P2.emplace_back(std::vector<float>());
+  N_P2.emplace_back(std::vector<int>());
   parent_pos.emplace_back(leaf_pos,leaf_index_P1,leaf_index_P2);
 }
+
 template<class stage> float AI_ISMCTS<stage>::evaluation_random(Board<stage> leaf_board_P1,Board<stage> leaf_board_P2,Deck leaf_deck_P1,Deck leaf_deck_P2) const {
   AI_random<stage> agent;
   while(leaf_board_P1.current_turn <= 12){
@@ -225,6 +226,7 @@ template<class stage> float AI_ISMCTS<stage>::evaluation(Board<stage> leaf_board
   return (use_evaluation_greedy ? 
   evaluation_greedy(leaf_board_P1,leaf_board_P2,leaf_deck_P1,leaf_deck_P2):evaluation_random(leaf_board_P1,leaf_board_P2,leaf_deck_P1,leaf_deck_P2));
 }
+
 template<class stage> void AI_ISMCTS<stage>::backup(const int leaf_pos,const int leaf_index_P1,const int leaf_index_P2,const float value_P1){
   W_P1[leaf_pos][leaf_index_P1] += value_P1;
   N_P1[leaf_pos][leaf_index_P1]++;
@@ -255,6 +257,7 @@ template<class stage> void AI_ISMCTS<stage>::set_root(const Board<stage> &board_
   assert(before_root_current_turn+1 == root_current_turn);
   this->root_board_P1 = board_P1;
   this->root_board_P2 = board_P2;
+  used_node_count = 0;
   deck_P1 = deck;
   //ターン1で、redrawをしなかったなら、posを1に変更して引き継ぐ
   if(!did_redraw_deck && root_current_turn == 1){
@@ -359,5 +362,6 @@ template<class stage> Choice<stage> AI_ISMCTS<stage>::get_action(const Board<sta
   before_root_current_turn = root_current_turn;
 
   std::cerr << max_N << " " << valid_actions_P1[chosen_action_pos].card_id << " " << W_P1[root_pos][chosen_action_pos]/N_P1[root_pos][chosen_action_pos] << std::endl;
+  std::cerr << "USED_NODE_COUNT:" << used_node_count << std::endl;
   return valid_actions_P1[chosen_action_pos];
 }
