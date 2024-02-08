@@ -1,7 +1,7 @@
 #pragma once
 #include <Siv3D.hpp>
 #include <vector>
-#include "board.hpp"
+#include "../board.hpp"
 #include "common_siv3d.hpp"
 template<class stage> class Visualizer_Stage{
   //X:150~650,Y:50~550を使用

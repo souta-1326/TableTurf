@@ -9,5 +9,7 @@ constexpr s3d::Color color_SP_P2 = Color{117, 239, 252};
 constexpr s3d::Color color_SP_burning_P2 = Color{244, 255, 255};
 constexpr s3d::Color wall_color = Color{216, 216, 216};
 constexpr s3d::Color empty_color = Color{20, 15, 39};
+constexpr s3d::Color card_color = Color{80, 80, 86};
+constexpr s3d::Color card_color_light = Color{143, 147, 155};
 constexpr int window_H = 600;
 constexpr int window_W = 800;
