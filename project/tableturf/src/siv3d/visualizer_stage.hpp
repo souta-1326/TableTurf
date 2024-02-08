@@ -2,24 +2,15 @@
 #include <Siv3D.hpp>
 #include <vector>
 #include "board.hpp"
-template<class stage> class Visualizer{
-  static constexpr s3d::Color color_normal_P1 = Color{237,248,81};
-  static constexpr s3d::Color color_SP_P1 = Color{243,163,58};
-  static constexpr s3d::Color color_SP_burning_P1 = Color{255,255,89};
-  static constexpr s3d::Color color_normal_P2 = Color{77,91,246};
-  static constexpr s3d::Color color_SP_P2 = Color{117,239,252};
-  static constexpr s3d::Color color_SP_burning_P2 = Color{244,255,255};
-  static constexpr s3d::Color wall_color = Color{216,216,216};
-  static constexpr s3d::Color empty_color = Color{20,15,39};
-  static constexpr int window_H = 600;
-  static constexpr int window_W = 800;
+#include "common_siv3d.hpp"
+template<class stage> class Visualizer_Stage{
   //X:150~650,Y:50~550を使用
   static constexpr int visualizer_H_min = 50;
   static constexpr int visualizer_H_max = 550;
   static constexpr int visualizer_W_min = 150;
   static constexpr int visualizer_W_max = 650;
   static constexpr int square_size = std::min(visualizer_W_max-visualizer_W_min,visualizer_H_max-visualizer_H_min)/std::max(stage::h,stage::w);
-  static constexpr int space_size = 1;
+  static constexpr int space_size = 1;//マスとマスの間の隙間
   //実際に盤面が映し出される部分の上と左の座標
   static constexpr int visualizer_H_top = (visualizer_H_min+visualizer_H_max-square_size*stage::h)/2;
   static constexpr int visualizer_W_left = (visualizer_W_min+visualizer_W_max-square_size*stage::w)/2;
@@ -46,34 +37,34 @@ public:
   static void visualize();
   static void set_board(Board<stage> &board);
 };
-template<class stage> Board<stage> *Visualizer<stage>::board_ptr = nullptr;
-template<class stage> int Visualizer<stage>::card_id_P1 = 0;
-template<class stage> int Visualizer<stage>::card_direction_P1 = 0;
-template<class stage> int Visualizer<stage>::card_pos_H_P1 = -1;
-template<class stage> int Visualizer<stage>::card_pos_W_P1 = -1;
-template<class stage> bool Visualizer<stage>::is_pass_P1 = false;
-template<class stage> bool Visualizer<stage>::is_SP_attack_P1 = false;
-template<class stage> int Visualizer<stage>::card_id_P2 = 0;
-template<class stage> int Visualizer<stage>::card_direction_P2 = 0;
-template<class stage> int Visualizer<stage>::card_pos_H_P2 = -1;
-template<class stage> int Visualizer<stage>::card_pos_W_P2 = -1;
-template<class stage> bool Visualizer<stage>::is_pass_P2 = false;
-template<class stage> bool Visualizer<stage>::is_SP_attack_P2 = false;
-template<class stage> std::vector<std::vector<Rect>> Visualizer<stage>::squares(stage::h,std::vector<Rect>(stage::w));
-template<class stage> void Visualizer<stage>::squares_setting(){
+template<class stage> Board<stage> *Visualizer_Stage<stage>::board_ptr = nullptr;
+template<class stage> int Visualizer_Stage<stage>::card_id_P1 = 0;
+template<class stage> int Visualizer_Stage<stage>::card_direction_P1 = 0;
+template<class stage> int Visualizer_Stage<stage>::card_pos_H_P1 = -1;
+template<class stage> int Visualizer_Stage<stage>::card_pos_W_P1 = -1;
+template<class stage> bool Visualizer_Stage<stage>::is_pass_P1 = false;
+template<class stage> bool Visualizer_Stage<stage>::is_SP_attack_P1 = false;
+template<class stage> int Visualizer_Stage<stage>::card_id_P2 = 0;
+template<class stage> int Visualizer_Stage<stage>::card_direction_P2 = 0;
+template<class stage> int Visualizer_Stage<stage>::card_pos_H_P2 = -1;
+template<class stage> int Visualizer_Stage<stage>::card_pos_W_P2 = -1;
+template<class stage> bool Visualizer_Stage<stage>::is_pass_P2 = false;
+template<class stage> bool Visualizer_Stage<stage>::is_SP_attack_P2 = false;
+template<class stage> std::vector<std::vector<Rect>> Visualizer_Stage<stage>::squares(stage::h,std::vector<Rect>(stage::w));
+template<class stage> void Visualizer_Stage<stage>::squares_setting(){
   for(int i=0;i<stage::h;i++){
     for(int j=0;j<stage::w;j++){
       squares[i][j] = Rect{visualizer_W_left+j*square_size,visualizer_H_top+i*square_size,square_size-space_size,square_size-space_size};
     }
   }
 }
-template<class stage> void Visualizer<stage>::set_board(Board<stage> &board){
-  if(Visualizer<stage>::board_ptr == nullptr){
+template<class stage> void Visualizer_Stage<stage>::set_board(Board<stage> &board){
+  if(Visualizer_Stage<stage>::board_ptr == nullptr){
     squares_setting();
   }
-  Visualizer<stage>::board_ptr = &board;
+  Visualizer_Stage<stage>::board_ptr = &board;
 }
-template<class stage> void Visualizer<stage>::show(const Board<stage> &board){
+template<class stage> void Visualizer_Stage<stage>::show(const Board<stage> &board){
   static Font font1(square_size-space_size);
   //盤面をwindowに映し出す
   for(int i=0;i<stage::h;i++){
@@ -81,7 +72,7 @@ template<class stage> void Visualizer<stage>::show(const Board<stage> &board){
       //マスがあったら正方形を描く
       //横がX座標なので、jが先
       if(stage::exists_square[i][j]){
-        //現在のマスが何番目化
+        //現在のマスが何番目か
         int now_order = stage::place_to_order[i][j];
         s3d::Color now_color;
         if(board.square_SP_P1[now_order]) now_color = color_SP_P1;
@@ -106,7 +97,7 @@ template<class stage> void Visualizer<stage>::show(const Board<stage> &board){
   font2(U"P2\n□:{}\nSP:{}"_fmt(board.square_P2.count(),board.SP_point_P2)).draw(655,20);
   font2(U"Turn:{}/{}"_fmt(board.current_turn,Board<stage>::TURN_MAX)).draw(20,550);
 }
-template<class stage> void Visualizer<stage>::put_both_cards_on_visualizer(){
+template<class stage> void Visualizer_Stage<stage>::put_both_cards_on_visualizer(){
   //まだboard_ptrが設定されていないなら何もしない
   if(board_ptr == nullptr) return;
   Board<stage> &board = *board_ptr;
@@ -254,7 +245,7 @@ template<class stage> void Visualizer<stage>::put_both_cards_on_visualizer(){
   //   show(board);
   // }
 }
-template<class stage> void Visualizer<stage>::set_P1_hand(const int card_id,const int card_direction,const int card_pos_H,const int card_pos_W,const bool is_pass,const bool is_SP_attack){
+template<class stage> void Visualizer_Stage<stage>::set_P1_hand(const int card_id,const int card_direction,const int card_pos_H,const int card_pos_W,const bool is_pass,const bool is_SP_attack){
   card_id_P1 = card_id;
   card_direction_P1 = card_direction;
   card_pos_H_P1 = card_pos_H;
@@ -262,7 +253,7 @@ template<class stage> void Visualizer<stage>::set_P1_hand(const int card_id,cons
   is_pass_P1 = is_pass;
   is_SP_attack_P1 = is_SP_attack;
 }
-template<class stage> void Visualizer<stage>::set_P1_hand(const int card_id,const int status_id,const bool is_SP_attack){
+template<class stage> void Visualizer_Stage<stage>::set_P1_hand(const int card_id,const int status_id,const bool is_SP_attack){
   int card_direction,card_pos_H,card_pos_W;bool is_pass;
   if(status_id == -1){
     is_pass = true;
@@ -274,7 +265,7 @@ template<class stage> void Visualizer<stage>::set_P1_hand(const int card_id,cons
   }
   set_P1_hand(card_id,card_direction,card_pos_H,card_pos_W,is_pass,is_SP_attack);
 }
-template<class stage> void Visualizer<stage>::set_P2_hand(const int card_id,const int card_direction,const int card_pos_H,const int card_pos_W,const bool is_pass,const bool is_SP_attack){
+template<class stage> void Visualizer_Stage<stage>::set_P2_hand(const int card_id,const int card_direction,const int card_pos_H,const int card_pos_W,const bool is_pass,const bool is_SP_attack){
   card_id_P2 = card_id;
   card_direction_P2 = card_direction;
   card_pos_H_P2 = card_pos_H;
@@ -282,7 +273,7 @@ template<class stage> void Visualizer<stage>::set_P2_hand(const int card_id,cons
   is_pass_P2 = is_pass;
   is_SP_attack_P2 = is_SP_attack;
 }
-template<class stage> void Visualizer<stage>::set_P2_hand(const int card_id,const int status_id,const bool is_SP_attack){
+template<class stage> void Visualizer_Stage<stage>::set_P2_hand(const int card_id,const int status_id,const bool is_SP_attack){
   int card_direction,card_pos_H,card_pos_W;bool is_pass;
   if(status_id == -1){
     is_pass = true;
@@ -295,6 +286,6 @@ template<class stage> void Visualizer<stage>::set_P2_hand(const int card_id,cons
   set_P2_hand(card_id,card_direction,card_pos_H,card_pos_W,is_pass,is_SP_attack);
 }
 
-template<class stage> void Visualizer<stage>::visualize(){
+template<class stage> void Visualizer_Stage<stage>::visualize(){
   put_both_cards_on_visualizer();
 }
