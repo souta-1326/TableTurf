@@ -1,7 +1,10 @@
 #pragma once
 #include <Siv3D.hpp>
 #include <vector>
+#include <utility>
+#include <optional>
 #include "../board.hpp"
+#include "../choice.hpp"
 #include "common_siv3d.hpp"
 template<class stage> class Visualizer_Stage{
   //X:150~650,Y:50~550を使用
@@ -20,13 +23,7 @@ template<class stage> class Visualizer_Stage{
   static void squares_setting();
   //ビジュアライズのうち、盤面を映す関数
   static void show(const Board<stage> &board);
-  //ビジュアライズのうち、手動で盤面のターンを進めるための関数
-  static void put_both_cards_on_visualizer();
-  //P1,P2の指し手をビジュアライザに送り込む
-  static void set_P1_hand(const int card_id,const int card_direction,const int card_pos_H,const int card_pos_W,const bool is_pass,const bool is_SP_attack);
-  static void set_P1_hand(const int card_id,const int status_id,const bool is_SP_attack);
-  static void set_P2_hand(const int card_id,const int card_direction,const int card_pos_H,const int card_pos_W,const bool is_pass,const bool is_SP_attack);
-  static void set_P2_hand(const int card_id,const int status_id,const bool is_SP_attack);
+
   //ビジュアライザに入力するための変数
   static int card_id_P1,card_direction_P1,card_pos_H_P1,card_pos_W_P1;
   static bool is_pass_P1,is_SP_attack_P1;
@@ -34,8 +31,23 @@ template<class stage> class Visualizer_Stage{
   static bool is_pass_P2,is_SP_attack_P2;
 public:
   //画面に盤面をビジュアライズする
-  static void visualize();
+  //盤面が進んだ時は、双方のChoiceを返す
+  //lock_option=0:どちらも操作可能
+  //lock_option=1:P1だけ操作可能
+  //lock_option=2:P2だけ操作可能
+  static std::optional<std::pair<Choice<stage>,Choice<stage>>> visualize(short lock_option = 0);
+
+  //映す盤面を決める
   static void set_board(Board<stage> &board);
+  //P1,P2の指し手をビジュアライザに送り込む
+  static void set_P1_hand(const int card_id,const int card_direction,const int card_pos_H,const int card_pos_W,const bool is_pass,const bool is_SP_attack);
+  static void set_P1_hand(const int card_id,const int status_id,const bool is_SP_attack);
+  static void set_P1_hand(const Choice<stage> &choice);
+  static void set_P1_card(const int card_id);
+  static void set_P2_hand(const int card_id,const int card_direction,const int card_pos_H,const int card_pos_W,const bool is_pass,const bool is_SP_attack);
+  static void set_P2_hand(const int card_id,const int status_id,const bool is_SP_attack);
+  static void set_P2_hand(const Choice<stage> &choice);
+  static void set_P2_card(const int card_id);
 };
 template<class stage> Board<stage> *Visualizer_Stage<stage>::board_ptr = nullptr;
 template<class stage> int Visualizer_Stage<stage>::card_id_P1 = 0;
@@ -97,9 +109,9 @@ template<class stage> void Visualizer_Stage<stage>::show(const Board<stage> &boa
   font2(U"P2\n□:{}\nSP:{}"_fmt(board.square_P2.count(),board.SP_point_P2)).draw(655,20);
   font2(U"Turn:{}/{}"_fmt(board.current_turn,Board<stage>::TURN_MAX)).draw(20,550);
 }
-template<class stage> void Visualizer_Stage<stage>::put_both_cards_on_visualizer(){
+template<class stage> std::optional<std::pair<Choice<stage>,Choice<stage>>> Visualizer_Stage<stage>::visualize(short lock_option){
   //まだboard_ptrが設定されていないなら何もしない
-  if(board_ptr == nullptr) return;
+  if(board_ptr == nullptr) return std::nullopt;
   Board<stage> &board = *board_ptr;
   //Passボタンの描画
   static Font font(30);
@@ -148,10 +160,11 @@ template<class stage> void Visualizer_Stage<stage>::put_both_cards_on_visualizer
   font(card_direction_P2).draw(715,300);
   //数値入力
   static int *inputted_num = &card_id_P1;
-  if(ID_button_P1.leftClicked()) inputted_num = &card_id_P1;
-  if(ID_button_P2.leftClicked()) inputted_num = &card_id_P2;
-  if(direction_button_P1.leftClicked()) inputted_num = &card_direction_P1;
-  if(direction_button_P2.leftClicked()) inputted_num = &card_direction_P2;
+  if(lock_option == 2) inputted_num = &card_id_P2;
+  if(ID_button_P1.leftClicked() && lock_option != 2) inputted_num = &card_id_P1;
+  if(ID_button_P2.leftClicked() && lock_option != 1) inputted_num = &card_id_P2;
+  if(direction_button_P1.leftClicked() && lock_option != 2) inputted_num = &card_direction_P1;
+  if(direction_button_P2.leftClicked() && lock_option != 1) inputted_num = &card_direction_P2;
   constexpr std::pair<Input,int> key_to_num[10] = {{Key0,0},{Key1,1},{Key2,2},{Key3,3},{Key4,4},{Key5,5},{Key6,6},{Key7,7},{Key8,8},{Key9,9}};
   for(auto [key,num]:key_to_num){
     if(key.down() && *inputted_num < 1000) *inputted_num = *inputted_num*10+num;
@@ -170,10 +183,13 @@ template<class stage> void Visualizer_Stage<stage>::put_both_cards_on_visualizer
   font(U"{} {}"_fmt(card_pos_H_P2,card_pos_W_P2)).draw(715,350);
   //Position入力
   static int *inputted_H = &card_pos_H_P1,*inputted_W = &card_pos_W_P1;
-  if(position_button_P1.leftPressed()){
+  if(lock_option == 2){
+    inputted_H = &card_pos_H_P2;inputted_W = &card_pos_W_P2;
+  }
+  if(position_button_P1.leftPressed() && lock_option != 2){
     inputted_H = &card_pos_H_P1;inputted_W = &card_pos_W_P1;
   }
-  if(position_button_P2.leftPressed()){
+  if(position_button_P2.leftPressed() && lock_option != 1){
     inputted_H = &card_pos_H_P2;inputted_W = &card_pos_W_P2;
   }
   for(int i=0;i<stage::h;i++){
@@ -199,10 +215,17 @@ template<class stage> void Visualizer_Stage<stage>::put_both_cards_on_visualizer
   if(is_choice_valid_P1 && is_choice_valid_P2 && OK_button.leftClicked()){
     board.put_both_cards_without_validation(card_id_P1,card_direction_P1,card_pos_H_P1,card_pos_W_P1,is_pass_P1,is_SP_attack_P1,
     card_id_P2,card_direction_P2,card_pos_H_P2,card_pos_W_P2,is_pass_P2,is_SP_attack_P2);
+
+    std::optional<std::pair<Choice<stage>,Choice<stage>>> ret_choices = 
+    std::make_pair(
+     Choice<stage>(card_id_P1,card_direction_P1,card_pos_H_P1,card_pos_W_P1,is_pass_P1,is_SP_attack_P1),
+     Choice<stage>(card_id_P2,card_direction_P2,card_pos_H_P2,card_pos_W_P2,is_pass_P2,is_SP_attack_P2));
+    
     card_pos_H_P1 = card_pos_W_P1 = card_pos_H_P2 = card_pos_W_P2 = -1;
     card_id_P1 = card_direction_P1 = is_pass_P1 = is_SP_attack_P1 = card_id_P2 = card_direction_P2 = is_pass_P2 = is_SP_attack_P2 = 0;
     show(board);
-    return;
+
+    return ret_choices;
   }
   //合法でない方の手に「Invalid」を表示する
   if(is_choice_filled_P1 && !is_choice_valid_P1) font(U"Invalid").draw(20,400);
@@ -214,36 +237,7 @@ template<class stage> void Visualizer_Stage<stage>::put_both_cards_on_visualizer
   else if(is_choice_valid_P1) virtual_board.put_P1_card_without_validation(card_id_P1,card_direction_P1,card_pos_H_P1,card_pos_W_P1,is_pass_P1,is_SP_attack_P1);
   else if(is_choice_valid_P2) virtual_board.put_P2_card_without_validation(card_id_P2,card_direction_P2,card_pos_H_P2,card_pos_W_P2,is_pass_P2,is_SP_attack_P2);
   show(virtual_board);
-  return;
-  // //もし全ての項目が埋まっている場合
-  // if(is_choice_filled_P1 && is_choice_filled_P2){
-  //   //適切でなかったら,合法でない方に「Invalid」を表示する
-  //   if(!(is_choice_valid_P1 && is_choice_valid_P2)){
-  //     if(!is_choice_valid_P1) font(U"Invalid").draw(20,400);
-  //     if(!is_choice_valid_P2) font(U"Invalid").draw(655,400);
-  //     show(board);
-  //   }
-  //   //OKボタンが押されたら、合法手の場合実際にカードを置く
-  //   // else if(OK_button.leftClicked()){
-  //   //   board.put_both_cards_without_validation(card_id_P1,card_direction_P1,card_pos_H_P1,card_pos_W_P1,is_pass_P1,is_SP_attack_P1,
-  //   //   card_id_P2,card_direction_P2,card_pos_H_P2,card_pos_W_P2,is_pass_P2,is_SP_attack_P2);
-  //   //   card_pos_H_P1 = card_pos_W_P1 = card_pos_H_P2 = card_pos_W_P2 = -1;
-  //   //   card_id_P1 = card_direction_P1 = is_pass_P1 = is_SP_attack_P1 = card_id_P2 = card_direction_P2 = is_pass_P2 = is_SP_attack_P2 = 0;
-  //   //   show(board);
-  //   // }
-  //   //OKボタンが押されてない場合、置いた場合の盤面を表示する
-  //   else{
-  //     static Board<stage> virtual_board;
-  //     virtual_board = board;
-  //     virtual_board.put_both_cards_without_validation(card_id_P1,card_direction_P1,card_pos_H_P1,card_pos_W_P1,is_pass_P1,is_SP_attack_P1,
-  //     card_id_P2,card_direction_P2,card_pos_H_P2,card_pos_W_P2,is_pass_P2,is_SP_attack_P2);
-  //     show(virtual_board);
-  //   }
-  // }
-  // //すべての項目が埋まっていない場合、元の盤面を表示
-  // else{
-  //   show(board);
-  // }
+  return std::nullopt;
 }
 template<class stage> void Visualizer_Stage<stage>::set_P1_hand(const int card_id,const int card_direction,const int card_pos_H,const int card_pos_W,const bool is_pass,const bool is_SP_attack){
   card_id_P1 = card_id;
@@ -265,6 +259,12 @@ template<class stage> void Visualizer_Stage<stage>::set_P1_hand(const int card_i
   }
   set_P1_hand(card_id,card_direction,card_pos_H,card_pos_W,is_pass,is_SP_attack);
 }
+template<class stage> void Visualizer_Stage<stage>::set_P1_hand(const Choice<stage> &choice){
+  set_P1_hand(choice.card_id,choice.status_id,choice.is_SP_attack);
+}
+template<class stage> void Visualizer_Stage<stage>::set_P1_card(const int card_id){
+  card_id_P1 = card_id;
+}
 template<class stage> void Visualizer_Stage<stage>::set_P2_hand(const int card_id,const int card_direction,const int card_pos_H,const int card_pos_W,const bool is_pass,const bool is_SP_attack){
   card_id_P2 = card_id;
   card_direction_P2 = card_direction;
@@ -285,7 +285,9 @@ template<class stage> void Visualizer_Stage<stage>::set_P2_hand(const int card_i
   }
   set_P2_hand(card_id,card_direction,card_pos_H,card_pos_W,is_pass,is_SP_attack);
 }
-
-template<class stage> void Visualizer_Stage<stage>::visualize(){
-  put_both_cards_on_visualizer();
+template<class stage> void Visualizer_Stage<stage>::set_P2_hand(const Choice<stage> &choice){
+  set_P2_hand(choice.card_id,choice.status_id,choice.is_SP_attack);
+}
+template<class stage> void Visualizer_Stage<stage>::set_P2_card(const int card_id){
+  card_id_P2 = card_id;
 }

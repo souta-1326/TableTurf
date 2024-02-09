@@ -28,10 +28,12 @@ public:
   Deck(const Deck &deck,const std::vector<int> &used_cards);
   //デッキをシャッフルし、リセット
   void reset();
+  //デッキをリセットし、最初の手札4枚を指定
+  void reset(const std::vector<int> &hand);
   //手札を添字で選んで捨てる
-  void choose_card_by_index(int index);
+  void choose_card_by_index(int index,int next_card_id = -1);
   //手札をcard_idで選んで捨てる
-  void choose_card_by_card_id(int card_id);
+  void choose_card_by_card_id(int card_id,int next_card_id = -1);
   //デッキ
   std::vector<int> get_deck() const {return card_id_in_deck;}
   //手札
@@ -47,7 +49,7 @@ public:
 Deck::Deck(const std::vector<int> &deck):card_id_in_deck(deck){
   assert(card_id_in_deck.size() == N_CARD_IN_DECK);
 }
-Deck::Deck(const std::vector<int> &deck,const std::vector<int> &used_cards):card_id_in_deck(deck){
+Deck::Deck(const std::vector<int> &deck,const std::vector<int> &used_cards):card_id_in_deck(deck),current_turn(1){
   assert(card_id_in_deck.size() == N_CARD_IN_DECK);
   current_turn = 1;
   for(int i=0;i<N_CARD_IN_DECK-current_turn+1;){
@@ -72,14 +74,31 @@ void Deck::reset(){
   //ターン数をリセット
   current_turn = 1;
 }
-void Deck::choose_card_by_index(int index){
+void Deck::reset(const std::vector<int> &hand){
+  //handを手札に持ってくる
+  for(int i=0;i<N_CARD_IN_HAND;i++){
+    int target_index = std::find(card_id_in_deck.begin(),card_id_in_deck.end(),hand[i])-card_id_in_deck.begin();
+    assert(target_index < N_CARD_IN_DECK);
+    std::swap(card_id_in_deck[i],card_id_in_deck[target_index]);
+  }
+  //ターン数をリセット
+  current_turn = 1;
+}
+void Deck::choose_card_by_index(int index,int next_card_id){
   assert(0 <= index && index < N_CARD_IN_HAND);
   //選んだ手札を4~(11-current_turn)番目までの手札のどれかと入れ替える
   //選んだ手札はcard_id_in_deckの右に詰めて入れる
   //最終ターンでは手札を入れ替えない
   //1ターン目 4+xorshift64()%(15-4-1+1) 4~14
   if(current_turn < 12){
-    int next_card_index = N_CARD_IN_HAND+xorshift64()%(N_CARD_IN_DECK-N_CARD_IN_HAND-current_turn+1);
+    // next_card_id が指定されている場合は探す
+    int next_card_index = 
+    (next_card_id == -1 ? 
+    N_CARD_IN_HAND+xorshift64()%(N_CARD_IN_DECK-N_CARD_IN_HAND-current_turn+1):
+    std::find(card_id_in_deck.begin(),card_id_in_deck.end(),next_card_id)-card_id_in_deck.begin());
+
+    assert(N_CARD_IN_HAND <= next_card_index && next_card_index < N_CARD_IN_DECK-current_turn+1);
+    
     //まず、使った手札と次の手札を入れ替え、
     std::swap(card_id_in_deck[index],card_id_in_deck[next_card_index]);
     //使った手札を奥にしまう
@@ -88,8 +107,8 @@ void Deck::choose_card_by_index(int index){
   //ターン数に1を足す
   current_turn++;
 }
-void Deck::choose_card_by_card_id(int card_id){
+void Deck::choose_card_by_card_id(int card_id,int next_card_id){
   int index = std::find(card_id_in_deck.begin(),card_id_in_deck.begin()+N_CARD_IN_HAND,card_id)-card_id_in_deck.begin();
   assert(index < N_CARD_IN_HAND);
-  choose_card_by_index(index);
+  choose_card_by_index(index,next_card_id);
 }

@@ -25,6 +25,8 @@ class Visualizer_Deck{
 public:
   //選ばれたカード群を返す
   static std::vector<int> visualize(const Deck &deck);
+  //is_clickedをreset
+  static void reset_is_clicked();
 };
 std::vector<Rect> Visualizer_Deck::squares_in_deck(Deck::N_CARD_IN_DECK);
 std::vector<std::vector<std::vector<Rect>>> Visualizer_Deck::squares_in_card
@@ -98,4 +100,8 @@ std::vector<int> Visualizer_Deck::visualize(const Deck &deck){
     if(is_clicked[i]) chosen_card.emplace_back(card_id_in_deck[i]);
   }
   return chosen_card;
+}
+
+void Visualizer_Deck::reset_is_clicked(){
+  std::fill(is_clicked.begin(),is_clicked.end(),false);
 }
