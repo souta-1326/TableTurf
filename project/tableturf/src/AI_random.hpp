@@ -10,8 +10,8 @@ template<class stage> class AI_random : public Agent<stage>{
  public:
   AI_random(){};
   bool redraw(const Deck &deck) override {return false;}
-  void get_deck_P1(const Deck &deck_P1) override {}
-  void get_deck_P2(const Deck &deck_P2) override {}
+  void set_deck_P1(const Deck &deck_P1) override {}
+  void set_deck_P2(const Deck &deck_P2) override {}
   Choice<stage> get_action(const Board<stage> &board_P1,const Board<stage> &board_P2,const Deck &deck) override;
 };
 template<class stage> Choice<stage> AI_random<stage>::get_action(const Board<stage> &board_P1,const Board<stage> &board_P2,const Deck &deck){

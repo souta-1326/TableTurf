@@ -14,6 +14,8 @@ template<class stage> void print_board_log(const Board<stage> &board,const Deck 
   auto valid_choices = board.get_valid_choices(true,deck_P1);
   std::vector<int> deck_P1_hand = deck_P1.get_hand();
 
+  std::cout << "Score:" << board.square_count_P1() << std::endl;
+  std::cout << "SP:" << board.SP_point_P1 << std::endl; 
 
   std::cout << "Hand:\n";
   for(int card_index=0;card_index<Deck::N_CARD_IN_HAND;card_index++){
@@ -36,6 +38,8 @@ template<class stage> void print_board_log(const Board<stage> &board,const Deck 
   auto valid_choices = board.get_valid_choices(false,deck_P2);
   std::vector<int> deck_P2_hand = deck_P2.get_hand();
 
+  std::cout << "Score:" << board.square_count_P2() << std::endl;
+  std::cout << "SP:" << board.SP_point_P2 << std::endl; 
 
   std::cout << "Hand:\n";
   for(int card_index=0;card_index<Deck::N_CARD_IN_HAND;card_index++){
@@ -58,8 +62,13 @@ template<class stage,class C1,class C2> std::vector<Board<stage>> Battle(C1 &age
   //deckのchoose_card_by_なんとかを忘れない
   //board_P1はP1視点のboard,board_P2はP2視点のboard
   Board<stage> board_P1,board_P2;
-  std::vector<Board<stage>> board_P1_log(13);//board_P1のログ
+  std::vector<Board<stage>> board_P1_log(Board<stage>::TURN_MAX+1);//board_P1のログ
   
+  //agentに互いのデッキを教える
+  agent_P1.set_deck_P1(deck_P1);
+  agent_P1.set_deck_P2(deck_P2);
+  agent_P2.set_deck_P1(deck_P2);
+  agent_P2.set_deck_P2(deck_P1);
   //試合開始
 
   //デッキをシャッフル
@@ -69,17 +78,17 @@ template<class stage,class C1,class C2> std::vector<Board<stage>> Battle(C1 &age
   if(agent_P1.redraw(deck_P1)) deck_P1.reset();
   if(agent_P2.redraw(deck_P2)) deck_P2.reset();
   board_P1_log[0] = board_P1;
-  for(int current_turn = 1;current_turn <= 12;current_turn++){
-    Choice<stage> choice_P1 = agent_P1.get_action(board_P1,deck_P1);
-    Choice<stage> choice_P2 = agent_P2.get_action(board_P2,deck_P2);
+  //ログ出力
+  print_board_log(board_P1,deck_P1,deck_P2);
+  for(int current_turn = 1;current_turn <= Board<stage>::TURN_MAX;current_turn++){
+    Choice<stage> choice_P1 = agent_P1.get_action(board_P1,board_P2,deck_P1);
+    Choice<stage> choice_P2 = agent_P2.get_action(board_P2,board_P1,deck_P2);
     assert(board_P1.is_valid_placement(true,choice_P1));
     assert(board_P1.is_valid_placement(false,choice_P2.swap_player()));
     //board_P2視点でP1は相手
     assert(board_P2.is_valid_placement(false,choice_P1.swap_player()));
     assert(board_P2.is_valid_placement(true,choice_P2));
 
-    //ログ出力
-    print_board_log(board_P1,deck_P1,deck_P2);
     //カードを置く
     board_P1.put_both_cards_without_validation(choice_P1,choice_P2.swap_player());
     board_P2.put_both_cards_without_validation(choice_P2,choice_P1.swap_player());
@@ -90,6 +99,9 @@ template<class stage,class C1,class C2> std::vector<Board<stage>> Battle(C1 &age
 
     //盤面ログ
     board_P1_log[current_turn] = board_P1;
+
+    //ログ出力
+    print_board_log(board_P1,deck_P1,deck_P2);
   }
 
   return board_P1_log;

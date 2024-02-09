@@ -78,8 +78,8 @@ template<class stage> class AI_ISMCTS : public Agent<stage>{
  public:
   AI_ISMCTS(int num_simulations,float diff_bonus=0,bool use_evaluation_greedy=true);
   bool redraw(const Deck &deck) override;
-  void get_deck_P1(const Deck &deck_P1) override;
-  void get_deck_P2(const Deck &deck_P2) override;
+  void set_deck_P1(const Deck &deck_P1) override;
+  void set_deck_P2(const Deck &deck_P2) override;
   Choice<stage> get_action(const Board<stage> &board_P1,const Board<stage> &board_P2,const Deck &deck) override;
   
   void set_root(const Board<stage> &board_P1,const Board<stage> &board_P2,const Deck &deck);
@@ -283,7 +283,7 @@ template<class stage> void AI_ISMCTS<stage>::set_root(const Board<stage> &board_
   }
 }
 
-template<class stage> void AI_ISMCTS<stage>::get_deck_P1(const Deck &deck_P1){
+template<class stage> void AI_ISMCTS<stage>::set_deck_P1(const Deck &deck_P1){
   this->deck_P1 = deck_P1;
   //valid_actions_P1を作成
   valid_actions_P1.clear();
@@ -304,7 +304,7 @@ template<class stage> void AI_ISMCTS<stage>::get_deck_P1(const Deck &deck_P1){
     }
   }
 }
-template<class stage> void AI_ISMCTS<stage>::get_deck_P2(const Deck &deck_P2){
+template<class stage> void AI_ISMCTS<stage>::set_deck_P2(const Deck &deck_P2){
   this->deck_P2 = deck_P2;
   //valid_actions_P2を作成
   valid_actions_P2.clear();
