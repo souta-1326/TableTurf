@@ -17,7 +17,6 @@ private:
   //デッキの各カードのID 先頭の4枚が手札
   //int card_id_in_deck[N_CARD_IN_DECK];
   std::vector<int> card_id_in_deck;
-public:
   //現在のターン数
   int current_turn;
 public:
