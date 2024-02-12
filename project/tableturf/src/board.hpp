@@ -41,6 +41,7 @@ public:
   std::bitset<N_SQUARE> is_there_a_block_nearby[8];
 public:
   Board();
+  constexpr int current_turn() const {return current_turn;}
   //SPポイントが足りているかどうか
   bool is_enough_SP_point(const bool is_placement_P1,const int card_id) const;
   //カードの置き方が合法かどうか

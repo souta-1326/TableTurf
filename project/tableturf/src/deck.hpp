@@ -34,6 +34,9 @@ public:
   void choose_card_by_index(int index,int next_card_id = -1);
   //手札をcard_idで選んで捨てる
   void choose_card_by_card_id(int card_id,int next_card_id = -1);
+  
+  //ターン数
+  constexpr int get_current_turn() const {return current_turn;}
   //デッキ
   std::vector<int> get_deck() const {return card_id_in_deck;}
   //手札

@@ -106,12 +106,12 @@ template<class stage> constexpr int AI_ISMCTS<stage>::choice_to_valid_actions_in
 template<class stage> std::tuple<int,int,int,Board<stage>,Board<stage>,Deck,Deck> AI_ISMCTS<stage>::selection(){
   Board<stage> simulated_board_P1 = root_board_P1,simulated_board_P2 = root_board_P2;
   Deck simulated_deck_P1 = deck_P1,simulated_deck_P2 = Deck(deck_P2,root_board_P1.used_cards_P2);
-  assert(simulated_deck_P1.current_turn == std::max(1,root_current_turn));
-  assert(simulated_deck_P2.current_turn == std::max(1,root_current_turn));
+  assert(simulated_deck_P1.get_current_turn() == std::max(1,root_current_turn));
+  assert(simulated_deck_P2.get_current_turn() == std::max(1,root_current_turn));
 
   int now_pos = root_pos;
   while(true){
-    //
+    //ノードがはじめて訪問されたときに初期化
     if(W_P1[now_pos].empty()){
       W_P1[now_pos].resize(valid_actions_P1.size());
       N_P1[now_pos].resize(valid_actions_P1.size());
@@ -201,7 +201,7 @@ template<class stage> void AI_ISMCTS<stage>::expansion(const int leaf_pos,const 
 
 template<class stage> float AI_ISMCTS<stage>::evaluation_random(Board<stage> leaf_board_P1,Board<stage> leaf_board_P2,Deck leaf_deck_P1,Deck leaf_deck_P2) const {
   AI_random<stage> agent;
-  while(leaf_board_P1.current_turn <= 12){
+  while(leaf_board_P1.get_current_turn() <= 12){
     Choice<stage> action_P1 = agent.get_action(leaf_board_P1,leaf_board_P2,leaf_deck_P1);
     Choice<stage> action_P2 = agent.get_action(leaf_board_P2,leaf_board_P1,leaf_deck_P2);
     leaf_board_P1.put_both_cards_without_validation(action_P1,action_P2.swap_player());
@@ -212,7 +212,7 @@ template<class stage> float AI_ISMCTS<stage>::evaluation_random(Board<stage> lea
 }
 template<class stage> float AI_ISMCTS<stage>::evaluation_greedy(Board<stage> leaf_board_P1,Board<stage> leaf_board_P2,Deck leaf_deck_P1,Deck leaf_deck_P2) const {
   AI_greedy<stage> agent;
-  while(leaf_board_P1.current_turn <= 12){
+  while(leaf_board_P1.get_current_turn() <= 12){
     Choice<stage> action_P1 = agent.get_action(leaf_board_P1,leaf_board_P2,leaf_deck_P1);
     Choice<stage> action_P2 = agent.get_action(leaf_board_P2,leaf_board_P1,leaf_deck_P2);
     leaf_board_P1.put_both_cards_without_validation(action_P1,action_P2.swap_player());
@@ -222,7 +222,7 @@ template<class stage> float AI_ISMCTS<stage>::evaluation_greedy(Board<stage> lea
   return std::clamp(square_diff,-1,1)+square_diff*diff_bonus;
 }
 template<class stage> float AI_ISMCTS<stage>::evaluation(Board<stage> leaf_board_P1,Board<stage> leaf_board_P2,Deck leaf_deck_P1,Deck leaf_deck_P2) const {
-  assert(leaf_board_P1.current_turn == leaf_board_P2.current_turn && leaf_board_P1.current_turn == leaf_deck_P1.current_turn && leaf_board_P1.current_turn == leaf_deck_P2.current_turn);
+  assert(leaf_board_P1.get_current_turn() == leaf_board_P2.get_current_turn() && leaf_board_P1.get_current_turn() == leaf_deck_P1.get_current_turn() && leaf_board_P1.get_current_turn() == leaf_deck_P2.get_current_turn());
   return (use_evaluation_greedy ? 
   evaluation_greedy(leaf_board_P1,leaf_board_P2,leaf_deck_P1,leaf_deck_P2):evaluation_random(leaf_board_P1,leaf_board_P2,leaf_deck_P1,leaf_deck_P2));
 }
@@ -249,7 +249,7 @@ template<class stage> void AI_ISMCTS<stage>::backup(const int leaf_pos,const int
 
 template<class stage> void AI_ISMCTS<stage>::simulate(){
   auto [leaf_pos,leaf_index_P1,leaf_index_P2,leaf_board_P1,leaf_board_P2,leaf_deck_P1,leaf_deck_P2] = selection();
-  if(leaf_board_P1.current_turn <= Board<stage>::TURN_MAX) expansion(leaf_pos,leaf_index_P1,leaf_index_P2);
+  if(leaf_board_P1.get_current_turn() <= Board<stage>::TURN_MAX) expansion(leaf_pos,leaf_index_P1,leaf_index_P2);
   float value_P1 = evaluation(leaf_board_P1,leaf_board_P2,leaf_deck_P1,leaf_deck_P2);
   backup(leaf_pos,leaf_index_P1,leaf_index_P2,value_P1);
 }
@@ -261,7 +261,7 @@ template<class stage> void AI_ISMCTS<stage>::set_root(const Board<stage> &board_
   deck_P1 = deck;
   //ターン1で、redrawをしなかったなら、posを1に変更して引き継ぐ
   if(!did_redraw_deck && root_current_turn == 1){
-    root_pos = 1;
+    root_pos = 1;return;
   }
   //木の再利用はしないので、root_posは常に0
   //木をリセット
@@ -344,7 +344,7 @@ template<class stage> bool AI_ISMCTS<stage>::redraw(const Deck &deck){
   return do_redraw_deck;
 }
 template<class stage> Choice<stage> AI_ISMCTS<stage>::get_action(const Board<stage> &board_P1,const Board<stage> &board_P2,const Deck &deck){
-  root_current_turn = board_P1.current_turn;
+  root_current_turn = board_P1.get_current_turn();
   set_root(board_P1,board_P2,deck);
 
   for(int i=0;i<num_simulations;i++) simulate();
