@@ -1,3 +1,4 @@
+#pragma once
 #include <tuple>
 #include <functional>
 template<class T> size_t HashCombine(const size_t seed,const T &v){
