@@ -78,9 +78,9 @@ template<class stage> void AI_PV_ISMCTS_Group<stage>::evaluation(){
     auto &[leaf_pos,leaf_index_P1,leaf_index_P2,leaf_board_P1,leaf_board_P2,leaf_deck_P1,leaf_deck_P2] = leaf_states[i];
     //盤面が終了していたら、networkは用いない
     if(leaf_board_P1.current_turn > Board<stage>::TURN_MAX) continue;
-    std::vector<float> state_array_P1 = searchers[i].construct_image_vector(leaf_board_P1,leaf_deck_P1,leaf_deck_P2);
+    std::vector<float> state_array_P1 = construct_image_vector(leaf_board_P1,leaf_deck_P1,leaf_deck_P2);
     std::copy(state_array_P1.begin(),state_array_P1.end(),batch_state_array.begin()+i*(2*INPUT_C*stage::h*stage::w));
-    std::vector<float> state_array_P2 = searchers[i].construct_image_vector(leaf_board_P2,leaf_deck_P2,leaf_deck_P1);
+    std::vector<float> state_array_P2 = construct_image_vector(leaf_board_P2,leaf_deck_P2,leaf_deck_P1);
     std::copy(state_array_P2.begin(),state_array_P2.end(),batch_state_array.begin()+i*(2*INPUT_C*stage::h*stage::w)+(INPUT_C*stage::h*stage::w));
   }
   torch::Tensor state_tensor = torch::tensor(torch::ArrayRef<float>(batch_state_array)).reshape({group_size*2,INPUT_C,stage::h,stage::w}).to(device,dtype);
