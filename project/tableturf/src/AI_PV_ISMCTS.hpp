@@ -96,8 +96,6 @@ template<class stage> class AI_PV_ISMCTS : public Agent<stage>{
   void expansion_redraw(const torch::Tensor &policy_tensor_P1);
 
   void evaluation(const Board<stage> &leaf_board_P1,const Board<stage> &leaf_board_P2,const Deck &leaf_deck_P1,const Deck &leaf_deck_P2);
-  //12ターン終了後のスコアを求める
-  float get_final_value(const Board<stage> &leaf_board) const;
   //networkによるスコアを求める
   float get_network_value() const;
   float get_network_value(const torch::Tensor &value_tensor_from_group) const;//AI_PV_ISMCTS_Group用
@@ -154,7 +152,7 @@ P_card_index_P1(N_card+1),P_card_index_P2(N_card+1){
 
 template<class stage> float AI_PV_ISMCTS<stage>::PUCB_score(float w,int n,int n_parent,float p) const {
   return
-  (n==0 ? 0:w/n)+//P
+  (n==0 ? 0:w/n)+//Q
   (std::log((1+n_parent+c_base)/c_base)+c_init)*p*std::sqrt(n_parent)/(1+n);//U
 }
 
@@ -353,10 +351,6 @@ template<class stage> void AI_PV_ISMCTS<stage>::evaluation(const Board<stage> &l
   policy_redraw_tensor = torch::nn::functional::softmax(tensor_list[1],torch::nn::functional::SoftmaxFuncOptions(1)).cpu();
   value_tensor = tensor_list[2].cpu();
 }
-template<class stage> float AI_PV_ISMCTS<stage>::get_final_value(const Board<stage> &leaf_board) const{
-  int square_diff = leaf_board.square_count_P1()-leaf_board.square_count_P2();
-  return std::clamp(square_diff,-1,1)+square_diff*diff_bonus;
-}
 template<class stage> float AI_PV_ISMCTS<stage>::get_network_value() const{
   //P1のvalueとP2の-valueの平均を取る
   return (value_tensor[0].item().toFloat()-value_tensor[1].item().toFloat())/2;
@@ -395,7 +389,7 @@ template<class stage> void AI_PV_ISMCTS<stage>::simulate(){
   float value_P1;
   //12ターン終了後は、直接勝敗を調べる
   if(leaf_board_P1.get_current_turn() > Board<stage>::TURN_MAX){
-    value_P1 = get_final_value(leaf_board_P1);
+    value_P1 = leaf_board_P1.get_final_value(diff_bonus);
   }
   //そうでなければ、expansionしつつnetworkのvalueを参照
   else{

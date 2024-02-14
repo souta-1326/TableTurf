@@ -70,6 +70,8 @@ public:
   //プレイヤーのマス数を求める
   int square_count_P1() const;
   int square_count_P2() const;
+  //結果判定
+  float get_final_value(float diff_bonus) const;
   //コンソールに盤面を出力
   void show() const;
 };
@@ -394,6 +396,12 @@ template<class stage> void Board<stage>::put_P2_card_without_validation(const Ch
 
 template<class stage> int Board<stage>::square_count_P1() const {return square_P1.count();}
 template<class stage> int Board<stage>::square_count_P2() const {return square_P2.count();}
+
+template<class stage> float Board<stage>::get_final_value(float diff_bonus) const {
+  assert(current_turn > TURN_MAX);
+  int square_diff = square_count_P1()-square_count_P2();
+  return std::clamp(square_diff,-1,1)+square_diff*diff_bonus;
+}
 
 template<class stage> void Board<stage>::show() const {
   const std::string color_normal_P1 = "\x1b[38;2;237;248;81m";

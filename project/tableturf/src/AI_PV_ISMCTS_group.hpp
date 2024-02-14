@@ -106,7 +106,7 @@ template<class stage> void AI_PV_ISMCTS_Group<stage>::simulate(){
     float value_P1;
     //12ターン終了後は、直接勝敗を調べる
     if(leaf_board_P1.get_current_turn() > Board<stage>::TURN_MAX){
-      value_P1 = searchers[i].get_final_value(leaf_board_P1);
+      value_P1 = leaf_board_P1.get_final_value(searchers[i].diff_bonus);
     }
     //そうでなければ、expansionしつつnetworkのvalueを参照
     else{
