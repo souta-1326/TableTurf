@@ -23,23 +23,23 @@ class ResBlock(nn.Module):
     x = F.relu(x)
     return x
 
-# 入力 (batch_size,N_card*2+39,stage::h,stage::w)
+# 入力 (batch_size,N_card*2+41,stage::h,stage::w)
 # 1x2 通常マス
 # 1x2 SPマス
 # 1 壁・盤面外
 # 12 何ターン目か
-# 11x2 SPポイントがkポイント以上溜まっているか(1≤k≤11)
+# 12x2 SPポイントがkポイント以上溜まっているか(1≤k≤12)
 # N_card x2 デッキに含まれる未使用カード(手札を含む)か
 
 # 出力 (batch_size,(N_CARD*(H*W*8+1),(1)))
-INPUT_C = N_CARD*2+39
+INPUT_C = N_CARD*2+41
 ACTION_SPACE_OF_EACH_CARD = H*W*8+1
 
 class AlphaZeroResNet(nn.Module):
   def __init__(self,H:int,W:int,n_blocks=19,filters=256,use_bias=False):
     super(AlphaZeroResNet,self).__init__()
 
-    self.conv1 = nn.Conv2d(N_CARD*2+39,filters,kernel_size=3,padding=1,bias=use_bias)
+    self.conv1 = nn.Conv2d(INPUT_C,filters,kernel_size=3,padding=1,bias=use_bias)
     self.bn1 = nn.BatchNorm2d(filters)
 
     #: residual tower
@@ -98,7 +98,7 @@ def main():
   H,W=26,9
   model = AlphaZeroResNet(H,W,n_blocks=19).to("mps")
   print(sum(p.numel() for p in model.parameters() if p.requires_grad))
-  dummy_input = torch.rand(64,N_CARD*2+39,H,W).to("mps")
+  dummy_input = torch.rand(64,INPUT_C,H,W).to("mps")
   torch.mps.synchronize()
   start = time.time()
   logits_action,logits_redraw,value = model(dummy_input)
