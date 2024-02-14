@@ -5,33 +5,31 @@
 #include "choice.hpp"
 #include "deck.hpp"
 #include "agent.hpp"
-#include "print_board_log.hpp"
-
-template<class stage,class C1,class C2> std::vector<Board<stage>> Battle(C1 &agent_P1,C2 &agent_P2,Deck deck_P1,Deck deck_P2){
+template<class stage,class C_Group> std::vector<Board<stage>> Battle(C_Group agent,Deck deck_P1,Deck deck_P2){
+  assert(agent.get_group_size() == 2);
   //deckのchoose_card_by_なんとかを忘れない
   //board_P1はP1視点のboard,board_P2はP2視点のboard
   Board<stage> board_P1,board_P2;
   std::vector<Board<stage>> board_P1_log(Board<stage>::TURN_MAX+1);//board_P1のログ
   
   //agentに互いのデッキを教える
-  agent_P1.set_deck_P1(deck_P1);
-  agent_P1.set_deck_P2(deck_P2);
-  agent_P2.set_deck_P1(deck_P2);
-  agent_P2.set_deck_P2(deck_P1);
+  agent.set_deck_P1({deck_P1,deck_P2});
+  agent.set_deck_P2({deck_P2,deck_P1});
   //試合開始
 
   //デッキをシャッフル
   deck_P1.reset();
   deck_P2.reset();
   //デッキの手札を任意で1回のみ入れ替える
-  if(agent_P1.redraw(deck_P1)) deck_P1.reset();
-  if(agent_P2.redraw(deck_P2)) deck_P2.reset();
+  std::vector<bool> do_redraw_decks = agent.redraws({deck_P1,deck_P2});
+  if(do_redraw_decks[0]) deck_P1.reset();
+  if(do_redraw_decks[1]) deck_P2.reset();
   board_P1_log[0] = board_P1;
   //ログ出力
   print_board_log(board_P1,deck_P1,deck_P2);
   for(int current_turn = 1;current_turn <= Board<stage>::TURN_MAX;current_turn++){
-    Choice<stage> choice_P1 = agent_P1.get_action(board_P1,board_P2,deck_P1);
-    Choice<stage> choice_P2 = agent_P2.get_action(board_P2,board_P1,deck_P2);
+    std::vector<Choice<stage>> choices = agent.get_actions({board_P1,board_P2},{board_P2,board_P1},{deck_P1,deck_P2});
+    Choice<stage> choice_P1 = choices[0],choice_P2 = choices[1];
     assert(board_P1.is_valid_placement(true,choice_P1));
     assert(board_P1.is_valid_placement(false,choice_P2.swap_player()));
     //board_P2視点でP1は相手

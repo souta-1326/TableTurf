@@ -11,4 +11,5 @@ template<class stage> class Agent{
   virtual void set_deck_P1(const Deck &deck_P1) = 0;
   virtual void set_deck_P2(const Deck &deck_P2) = 0;
   virtual Choice<stage> get_action(const Board<stage> &board_P1,const Board<stage> &board_P2,const Deck &deck) = 0;
+  virtual ~Agent(){}
 };
