@@ -13,8 +13,8 @@ template<class stage,class C_Group> std::vector<Board<stage>> Battle(C_Group age
   std::vector<Board<stage>> board_P1_log(Board<stage>::TURN_MAX+1);//board_P1のログ
   
   //agentに互いのデッキを教える
-  agent.set_deck_P1({deck_P1,deck_P2});
-  agent.set_deck_P2({deck_P2,deck_P1});
+  agent.set_deck_P1s({deck_P1,deck_P2});
+  agent.set_deck_P2s({deck_P2,deck_P1});
   //試合開始
 
   //デッキをシャッフル

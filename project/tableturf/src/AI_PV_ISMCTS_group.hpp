@@ -49,8 +49,8 @@ public:
   std::vector<std::vector<float>> get_policy_redraws() const;
   std::vector<std::vector<std::pair<Choice<stage>,float>>> get_policy_actions() const;
 
-  void set_deck_P1(const std::vector<Deck> &deck_P1s) override;
-  void set_deck_P2(const std::vector<Deck> &deck_P2s) override;
+  void set_deck_P1s(const std::vector<Deck> &deck_P1s) override;
+  void set_deck_P2s(const std::vector<Deck> &deck_P2s) override;
 };
 
 template<class stage> AI_PV_ISMCTS_Group<stage>::AI_PV_ISMCTS_Group(
@@ -182,9 +182,9 @@ template<class stage> std::vector<std::vector<std::pair<Choice<stage>,float>>> A
   return policy_actions;
 }
 
-template<class stage> void AI_PV_ISMCTS_Group<stage>::set_deck_P1(const std::vector<Deck> &deck_P1s){
+template<class stage> void AI_PV_ISMCTS_Group<stage>::set_deck_P1s(const std::vector<Deck> &deck_P1s){
   for(int i=0;i<group_size;i++) searchers[i].set_deck_P1(deck_P1s[i]);
 }
-template<class stage> void AI_PV_ISMCTS_Group<stage>::set_deck_P2(const std::vector<Deck> &deck_P2s){
+template<class stage> void AI_PV_ISMCTS_Group<stage>::set_deck_P2s(const std::vector<Deck> &deck_P2s){
   for(int i=0;i<group_size;i++) searchers[i].set_deck_P2(deck_P2s[i]);
 }
