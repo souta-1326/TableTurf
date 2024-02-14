@@ -1,10 +1,10 @@
-#Reference:Leanny,https://github.com/Leanny/splat3/blob/main/data/mush/400/MiniGameCardInfo.json
+#Reference:Leanny,https://github.com/Leanny/splat3/blob/main/data/mush/600/MiniGameCardInfo.json
 #TODO:MIT Licenseに対応した正しい著作者表示をする
 import requests,json
 from pprint import pprint
 MAX_H = 8
 MAX_W = 8
-URL = "https://raw.githubusercontent.com/Leanny/splat3/master/data/mush/400/MiniGameCardInfo.json"
+URL = "https://raw.githubusercontent.com/Leanny/splat3/master/data/mush/600/MiniGameCardInfo.json"
 text = requests.get(URL).text
 cards_data = json.loads(text)
 def data_format(data:dict):
@@ -33,6 +33,7 @@ def data_format(data:dict):
 cards_data_format = [(0,0,0,0,[[0]*8 for _ in range(8)],0)]+[data_format(card_data) for card_data in cards_data]
 cards_data_format.sort()
 with open("card_database.hpp",mode='w') as f:
+  print('#pragma once',file=f)
   print('#include "card.hpp"',file=f)
   N_card = len(cards_data)
   print(f'constexpr int N_card = {N_card};',file=f)
@@ -46,4 +47,7 @@ with open("card_database.hpp",mode='w') as f:
     print(f'{"{"}{h},{w},{N_square},cards_cell[{i}],{SP_cost}{"}"},',file=f)
   print('};',file=f)
 
+with open("network/common.py",mode='w') as f:
+  N_card = len(cards_data)
+  print(f'N_CARD = {N_card}',file=f)
 
