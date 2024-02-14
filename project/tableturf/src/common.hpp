@@ -104,3 +104,15 @@ template<class stage> std::vector<float> construct_image_vector(const Board<stag
 
   return state_array;
 }
+
+//2つのstd::vector<T>の要素を交互に組み込む
+template<class T> std::vector<T> incorporate(const std::vector<T> &x,const std::vector<T> &y){
+  assert(x.size() == y.size());
+  std::vector<T> ret;
+  ret.reserve(x.size()*2);
+  for(int i=0;i<x.size();i++){
+    ret.emplace_back(x[i]);
+    ret.emplace_back(y[i]);
+  }
+  return ret;
+}
