@@ -87,6 +87,7 @@ template<class stage> class AI_PV_ISMCTS : public Agent<stage>{
 
   //{探索した葉のpos,葉で選んだindex_P1,葉で選んだindex_P2,葉での盤面P1,葉での盤面P2,葉でのdeck_P1,葉でのdeck_P2}を返す
   std::tuple<int,int,int,Board<stage>,Board<stage>,Deck,Deck> selection();
+  bool is_redraw_node(int pos) const;
   
   //展開しつつPとP_cardを更新
   //policy_tensorは(N_card*(1(パス)+H*W*4(通常)+H*W*4(SP)))の形
@@ -95,6 +96,11 @@ template<class stage> class AI_PV_ISMCTS : public Agent<stage>{
   void expansion_redraw(const torch::Tensor &policy_tensor_P1);
 
   void evaluation(const Board<stage> &leaf_board_P1,const Board<stage> &leaf_board_P2,const Deck &leaf_deck_P1,const Deck &leaf_deck_P2);
+  //12ターン終了後のスコアを求める
+  float get_final_value(const Board<stage> &leaf_board) const;
+  //networkによるスコアを求める
+  float get_network_value() const;
+  float get_network_value(const torch::Tensor &value_tensor_from_group) const;//AI_PV_ISMCTS_Group用
   //1個分生成 これをつなげてtorch::Tensorに変換する
   std::vector<float> construct_image_vector(const Board<stage> &leaf_board,const Deck &leaf_deck_P1,const Deck &leaf_deck_P2);
 
@@ -102,6 +108,10 @@ template<class stage> class AI_PV_ISMCTS : public Agent<stage>{
   
   //simulate,evaluation,expansion,backupをする
   void simulate();
+
+  //シミュレーション後に、N_P1[root_pos]を参照してactionを選ぶ
+  bool get_do_redraw_deck() const;
+  Choice<stage> get_best_action() const;
 
   //木の初期化
   void set_root(const Board<stage> &board_P1,const Board<stage> &board_P2,const Deck &deck);
@@ -174,9 +184,8 @@ template<class stage> std::tuple<int,int,int,Board<stage>,Board<stage>,Deck,Deck
     //P1とP2の手札
     std::vector<int> card_id_in_hand_P1 = simulated_deck_P1.get_hand();
     std::vector<int> card_id_in_hand_P2 = simulated_deck_P2.get_hand();
-    //現在のノードがredrawフェイズ(ターン0)か
-    bool is_redraw_phase = (root_current_turn == 0 && now_pos == 0);
-    if(is_redraw_phase) assert(W_P1[now_pos].size() == 2 && W_P2[now_pos].size() == 1);
+
+    if(is_redraw_node(now_pos)) assert(W_P1[now_pos].size() == 2 && W_P2[now_pos].size() == 1);
 
     
     std::tuple<bool,int&,std::vector<int>&,std::vector<float>&,std::vector<int>&,std::vector<Choice<stage>>&,std::vector<float>&,std::vector<std::vector<float>>&,std::vector<int>&> looper[2] =
@@ -185,7 +194,7 @@ template<class stage> std::tuple<int,int,int,Board<stage>,Board<stage>,Deck,Deck
     for(auto [is_placement_P1,chosen_index,card_id_in_hand,W,N,valid_actions,P,P_card,P_card_index]:looper){
       //PUCBスコアが最大となる子を求める
       float max_PUCB_score = -1e9;
-      if(is_redraw_phase){
+      if(is_redraw_node(now_pos)){
         for(int i=0;i<W.size();i++){
           float now_PUCB_score = PUCB_score(W[i],N[i],n_parent,P[i]);
           if(max_PUCB_score < now_PUCB_score){
@@ -230,7 +239,7 @@ template<class stage> std::tuple<int,int,int,Board<stage>,Board<stage>,Deck,Deck
     assert(chosen_index_P2 != -1);
 
     //盤面、デッキの更新
-    if(is_redraw_phase){
+    if(is_redraw_node(now_pos)){
       if(chosen_index_P1 == 1) simulated_deck_P1.reset();
     }
     else{
@@ -247,7 +256,9 @@ template<class stage> std::tuple<int,int,int,Board<stage>,Board<stage>,Deck,Deck
     else now_pos = pos_map[{now_pos,chosen_index_P1,chosen_index_P2}];
   }
 }
-
+template<class stage> bool AI_PV_ISMCTS<stage>::is_redraw_node(int pos) const {
+  return root_current_turn == 0 && pos == 0;
+}
 template<class stage> void AI_PV_ISMCTS<stage>::expansion_action(const int leaf_pos,const int leaf_index_P1,const int leaf_index_P2,const torch::Tensor &policy_tensor_P1,const torch::Tensor &policy_tensor_P2){
   //展開
   int now_pos = W_P1.size();
@@ -344,6 +355,18 @@ template<class stage> void AI_PV_ISMCTS<stage>::evaluation(const Board<stage> &l
   policy_redraw_tensor = torch::nn::functional::softmax(tensor_list[1],torch::nn::functional::SoftmaxFuncOptions(1)).cpu();
   value_tensor = tensor_list[2].cpu();
 }
+template<class stage> float AI_PV_ISMCTS<stage>::get_final_value(const Board<stage> &leaf_board) const{
+  int square_diff = leaf_board.square_count_P1()-leaf_board.square_count_P2();
+  return std::clamp(square_diff,-1,1)+square_diff*diff_bonus;
+}
+template<class stage> float AI_PV_ISMCTS<stage>::get_network_value() const{
+  //P1のvalueとP2の-valueの平均を取る
+  return (value_tensor[0].item().toFloat()-value_tensor[1].item().toFloat())/2;
+}
+template<class stage> float AI_PV_ISMCTS<stage>::get_network_value(const torch::Tensor &value_tensor_from_group) const{
+  //P1のvalueとP2の-valueの平均を取る
+  return (value_tensor_from_group[0].item().toFloat()-value_tensor_from_group[1].item().toFloat())/2;
+}
 template<class stage> std::vector<float> AI_PV_ISMCTS<stage>::construct_image_vector(const Board<stage> &leaf_board,const Deck &leaf_deck_P1,const Deck &leaf_deck_P2){
   std::vector<float> state_array(INPUT_C*stage::h*stage::w);//1次元化
   //通常マス,SPマス,壁&盤面外(5,0~4)
@@ -382,23 +405,23 @@ template<class stage> std::vector<float> AI_PV_ISMCTS<stage>::construct_image_ve
   std::fill(state_array.begin()+channel_index*(stage::h*stage::w),state_array.begin()+(channel_index+1)*(stage::h*stage::w),1);
   }
   //SPがいくつ溜まってるか
-  //1P(11,17~27)
+  //1P(12,17~28)
   {
   int SP_point = leaf_board.SP_point_P1;
-  SP_point = std::min(SP_point,11);//12以上の情報は要らない
+  SP_point = std::min(SP_point,12);//13以上の情報は要らない
   int channel_index_start = 17,channel_index_end = 17+SP_point;//半開区間
   std::fill(state_array.begin()+channel_index_start*(stage::h*stage::w),state_array.begin()+channel_index_end*(stage::h*stage::w),1);
   }
-  //2P(11,28~38)
+  //2P(12,29~40)
   {
   int SP_point = leaf_board.SP_point_P2;
-  SP_point = std::min(SP_point,11);//12以上の情報は要らない
-  int channel_index_start = 28,channel_index_end = 28+SP_point;//半開区間
+  SP_point = std::min(SP_point,12);//13以上の情報は要らない
+  int channel_index_start = 29,channel_index_end = 29+SP_point;//半開区間
   std::fill(state_array.begin()+channel_index_start*(stage::h*stage::w),state_array.begin()+channel_index_end*(stage::h*stage::w),1);
   }
   
   //未使用カード
-  //1P(N_card,39~(38+N_card))
+  //1P(N_card,41~(40+N_card))
   {
   std::vector<int> card_id_unused;
   std::vector<int> card_id_in_hand = leaf_deck_P1.get_hand();
@@ -407,11 +430,11 @@ template<class stage> std::vector<float> AI_PV_ISMCTS<stage>::construct_image_ve
   std::copy(card_id_in_stock.begin(),card_id_in_stock.end(),std::back_inserter(card_id_unused));
 
   for(int card_id:card_id_unused){
-    int channel_index = 39+(card_id-1);//card_idが1-indexedなため
+    int channel_index = 41+(card_id-1);//card_idが1-indexedなため
     std::fill(state_array.begin()+channel_index*(stage::h*stage::w),state_array.begin()+(channel_index+1)*(stage::h*stage::w),1);
   }
   }
-  //2P(N_card,(39+N_card)~(38+N_card*2))
+  //2P(N_card,(41+N_card)~(40+N_card*2))
   {
   std::vector<int> card_id_unused;
   std::vector<int> card_id_in_hand = leaf_deck_P2.get_hand();
@@ -420,7 +443,7 @@ template<class stage> std::vector<float> AI_PV_ISMCTS<stage>::construct_image_ve
   std::copy(card_id_in_stock.begin(),card_id_in_stock.end(),std::back_inserter(card_id_unused));
 
   for(int card_id:card_id_unused){
-    int channel_index = 39+N_card+(card_id-1);//card_idが1-indexedなため
+    int channel_index = 41+N_card+(card_id-1);//card_idが1-indexedなため
     std::fill(state_array.begin()+channel_index*(stage::h*stage::w),state_array.begin()+(channel_index+1)*(stage::h*stage::w),1);
   }
   }
@@ -457,21 +480,20 @@ template<class stage> void AI_PV_ISMCTS<stage>::simulate(){
   float value_P1;
   //12ターン終了後は、直接勝敗を調べる
   if(leaf_board_P1.get_current_turn() > Board<stage>::TURN_MAX){
-    int square_diff = leaf_board_P1.square_count_P1()-leaf_board_P1.square_count_P2();
-    value_P1 = std::clamp(square_diff,-1,1)+square_diff*diff_bonus;
+    value_P1 = get_final_value(leaf_board_P1);
   }
   //そうでなければ、expansionしつつnetworkのvalueを参照
   else{
     //policy_action_tensor,policy_redraw_tensor,value_tensorを取得
     evaluation(leaf_board_P1,leaf_board_P2,leaf_deck_P1,leaf_deck_P2);
 
+    int expanded_pos = W_P1.size();
     //redrawノードであればexpansion_redraw
-    if(root_current_turn == 0 && leaf_pos == -1) expansion_redraw(policy_redraw_tensor[0]);
+    if(is_redraw_node(expanded_pos)) expansion_redraw(policy_redraw_tensor[0]);
     //そうでなければexpansion_action
     else expansion_action(leaf_pos,leaf_index_P1,leaf_index_P2,policy_action_tensor[0],policy_action_tensor[1]);
 
-    //P1のvalueとP2の-valueの平均を取る
-    value_P1 = (value_tensor[0].item().toFloat()-value_tensor[1].item().toFloat())/2;
+    value_P1 = get_network_value();
   }
   backup(leaf_pos,leaf_index_P1,leaf_index_P2,value_P1);
   //std::cerr << "OK" << std::endl;
@@ -566,15 +588,12 @@ template<class stage> bool AI_PV_ISMCTS<stage>::redraw(const Deck &deck){
   for(int i=0;i<num_simulations;i++) simulate();
 
   //カードを入れ替えた方が探索回数が多い(勝率が高い)ならtrue
-  bool do_redraw_deck = N_P1[root_pos][0] < N_P1[root_pos][1];
+  bool do_redraw_deck = get_do_redraw_deck();
   //最後にdid_redraw_deckに戻り値を代入
   did_redraw_deck = do_redraw_deck;
 
   //before_root_current_turnを更新
   before_root_current_turn = root_current_turn;
-
-  // for(float policy:get_policy_redraw()) std::cerr << policy << " ";
-  // std::cerr << std::endl;
 
   return do_redraw_deck;
 }
@@ -585,6 +604,19 @@ template<class stage> Choice<stage> AI_PV_ISMCTS<stage>::get_action(const Board<
   for(int i=0;i<num_simulations;i++) simulate();
 
   //最も多く探索されたactionを選ぶ
+  Choice<stage> best_action = get_best_action();
+
+  //before_root_current_turnを更新
+  before_root_current_turn = root_current_turn;
+
+  return best_action;
+}
+
+template<class stage> bool AI_PV_ISMCTS<stage>::get_do_redraw_deck() const {
+  return N_P1[root_pos][0] < N_P1[root_pos][1];
+}
+
+template<class stage> Choice<stage> AI_PV_ISMCTS<stage>::get_best_action() const {
   int max_N = 0,chosen_action_pos = -1;
   for(int i=0;i<N_P1[root_pos].size();i++){
     if(max_N < N_P1[root_pos][i]){
@@ -592,13 +624,7 @@ template<class stage> Choice<stage> AI_PV_ISMCTS<stage>::get_action(const Board<
       chosen_action_pos = i;
     }
   }
-
-  //before_root_current_turnを更新
-  before_root_current_turn = root_current_turn;
-
   std::cerr << max_N << " " << valid_actions_P1[chosen_action_pos].card_id << " " << W_P1[root_pos][chosen_action_pos]/N_P1[root_pos][chosen_action_pos] << std::endl;
-  // for(auto [choice,policy]:get_policy_action()) std::cerr << policy << " ";
-  // std::cerr << std::endl;
   return valid_actions_P1[chosen_action_pos];
 }
 
@@ -608,6 +634,9 @@ template<class stage> std::vector<float> AI_PV_ISMCTS<stage>::get_policy_redraw(
   int N_root = std::accumulate(N_P1[root_pos].begin(),N_P1[root_pos].end(),0);
   std::vector<float> policy_redraw(2);
   for(int i=0;i<2;i++) policy_redraw[i] = float(N_P1[root_pos][i])/N_root;
+
+  for(float policy:policy_redraw) std::cerr << policy << " ";
+  std::cerr << std::endl;
   return policy_redraw;
 }
 template<class stage> std::vector<std::pair<Choice<stage>,float>> AI_PV_ISMCTS<stage>::get_policy_action() const {
@@ -625,5 +654,7 @@ template<class stage> std::vector<std::pair<Choice<stage>,float>> AI_PV_ISMCTS<s
     }
   }
 
+  for(auto [choice,policy]:policy_action) std::cerr << policy << " ";
+  std::cerr << std::endl;
   return policy_action;
 }
