@@ -6,7 +6,7 @@ constexpr int INPUT_C = 2+2+1+12+12*2+N_card*2;
 template<class stage> constexpr int ACTION_SPACE_OF_EACH_CARD = stage::h*stage::w*8+1;
 
 
-template<class stage> int choice_to_policy_action_index(const Choice<stage> choice){
+template<class stage> int choice_to_policy_action_network_index(const Choice<stage> choice){
   if(choice.status_id == -1) return (choice.card_id-1)*ACTION_SPACE_OF_EACH_CARD<stage>;
   else{
     auto [direction,h_index,w_index] = stage::card_status[choice.card_id][choice.status_id];
@@ -115,4 +115,40 @@ template<class T> std::vector<T> incorporate(const std::vector<T> &x,const std::
     ret.emplace_back(y[i]);
   }
   return ret;
+}
+
+//学習用出力(policy_action)の素を生成
+//policy_action_AIはAIの探索回数によるpolicy, policy_action_networkはmodelの出力
+//1. 手札内のpolicyはpolicy_action_networkと総和を変えないまま、policy_action_AIと比率を揃える
+//2. デッキ内のpolicyの総和を1にするように、デッキ内のpolicyに定数倍を掛ける
+template<class stage> std::vector<std::pair<Choice<stage>,float>> construct_policy_action_for_learning
+(const std::vector<std::pair<Choice<stage>,float>> &policy_action_AI,const std::vector<std::pair<Choice<stage>,float>> &policy_action_network,const Deck &deck){
+  std::vector<int> card_id_in_hand = deck.get_hand(),card_id_in_deck = deck.get_deck();
+
+  std::vector<short> is_in_hand(N_card+1);
+  for(int card_id:card_id_in_hand) is_in_hand[card_id] = true;
+
+
+  //事前準備
+  float sum_of_policy_action_network_in_hand = 0,sum_of_policy_action_network_in_deck = 0;
+  for(const auto &[choice,policy]:policy_action_network){
+    if(is_in_hand[choice.card_id]) sum_of_policy_action_network_in_hand += policy;
+    sum_of_policy_action_network_in_deck += policy;
+  }
+
+  std::vector<std::pair<Choice<stage>,float>> policy_action_for_learning;
+  policy_action_for_learning.reserve(policy_action_network.size());
+  for(const auto &[choice,policy]:policy_action_AI){
+    assert(is_in_hand[choice.card_id]);
+    //1. policy_action_AIの総和は1なので、各policyにsum_of_policy_action_network_in_handを掛ける
+    //2. sum_of_policy_action_network_in_deckで割る
+    policy_action_for_learning.emplace_back(choice,policy*sum_of_policy_action_network_in_hand/sum_of_policy_action_network_in_deck);
+  }
+  for(const auto &[choice,policy]:policy_action_network){
+    if(is_in_hand[choice.card_id]) continue;
+    //2. sum_of_policy_action_network_in_deckで割る
+    policy_action_for_learning.emplace_back(choice,policy/sum_of_policy_action_network_in_deck);
+  }
+  assert(policy_action_for_learning.size() == policy_action_network.size());
+  return policy_action_for_learning;
 }

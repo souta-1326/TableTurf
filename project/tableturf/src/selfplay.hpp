@@ -59,10 +59,11 @@ template<class stage> void selfplay(
     std::vector<Choice<stage>> choices = 
     agent.get_actions(incorporate(board_P1s,board_P2s),incorporate(board_P2s,board_P1s),incorporate(deck_P1s,deck_P2s));
     std::vector<std::vector<std::pair<Choice<stage>,float>>> policy_actions = agent.get_policy_actions();
+    std::vector<std::vector<std::pair<Choice<stage>,float>>> policy_actions_network = agent.get_policy_actions_network();
     for(int i=0;i<num_games;i++){
       //recordsを更新
-      records[i*2].push_back({board_P1s[i],deck_P1s[i],deck_P2s[i],std::vector<float>(),policy_actions[i*2],0.0F});
-      records[i*2+1].push_back({board_P2s[i],deck_P2s[i],deck_P1s[i],std::vector<float>(),policy_actions[i*2+1],0.0F});
+      records[i*2].push_back({board_P1s[i],deck_P1s[i],deck_P2s[i],std::vector<float>(),construct_policy_action_for_learning(policy_actions[i*2],policy_actions_network[i*2],deck_P1s[i]),0.0F});
+      records[i*2+1].push_back({board_P2s[i],deck_P2s[i],deck_P1s[i],std::vector<float>(),construct_policy_action_for_learning(policy_actions[i*2+1],policy_actions_network[i*2+1],deck_P2s[i]),0.0F});
 
       //カードを置く
       assert(board_P1s[i].is_valid_placement(true,choices[i*2]));

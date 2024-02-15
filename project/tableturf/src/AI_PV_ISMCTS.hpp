@@ -73,6 +73,8 @@ template<class stage> class AI_PV_ISMCTS : public Agent<stage>{
   std::vector<std::vector<float>> W_P1,W_P2;
   // visit count
   std::vector<std::vector<int>> N_P1,N_P2;
+  // ディリクレノイズ
+  std::vector<float> noises;
 
   //parent_pos[child_pos] = {parentのpos,1Pのindex,2Pのindex}
   std::vector<std::tuple<int,int,int>> parent_pos;
@@ -124,6 +126,8 @@ template<class stage> class AI_PV_ISMCTS : public Agent<stage>{
   std::vector<float> get_policy_redraw() const;
   //get_action後に呼び出し、choiceとそれが選ばれた確率を得る
   std::vector<std::pair<Choice<stage>,float>> get_policy_action() const;
+  //rootのnetworkから得られたpolicyを返す
+  std::vector<std::pair<Choice<stage>,float>> get_policy_action_network() const;
 
   void set_deck_P1(const Deck &deck_P1) override;
   void set_deck_P2(const Deck &deck_P2) override;
@@ -222,13 +226,17 @@ template<class stage> std::tuple<int,int,int,Board<stage>,Board<stage>,Deck,Deck
             //設置不可能なChoiceは除外
             if(!simulated_board_P1.is_valid_placement_without_SP_point_validation(is_placement_P1,valid_actions[now_index])) continue;
             
-            float now_PUCB_score = PUCB_score(W[now_index],N[now_index],n_parent,P[now_index]/sum_valid_policy);
+            //rootなら、Pにディリクレノイズを足す
+            float now_PUCB_score = PUCB_score(W[now_index],N[now_index],n_parent,P[now_index]/sum_valid_policy+(now_pos == root_pos ? noises[now_index]:0));
             if(max_PUCB_score < now_PUCB_score){
               max_PUCB_score = now_PUCB_score;
               chosen_index = now_index;
             }
           }
         }
+        // if(now_pos == root_pos && chosen_index == choice_to_valid_actions_index(is_placement_P1,{card_id_in_hand[0],-1,false})){
+        //   std::cerr << PUCB_score(W[0],N[0],n_parent,P[0]/sum_valid_policy+noises[0]) << " " << W[0] << " " << N[0] << " " << n_parent << " " << P[0]/sum_valid_policy << " " << noises[0] << " " << std::endl;
+        // }
       }
     }
     assert(chosen_index_P1 != -1);
@@ -285,7 +293,7 @@ template<class stage> void AI_PV_ISMCTS<stage>::expansion_action(const int leaf_
     for(int card_id:card_id_in_deck)
     for(bool is_SP_attack:{false,true}){
       for(int status_id=(is_SP_attack ? 0:-1);status_id<stage::card_status_size[card_id];status_id++){
-        int P_network_index = choice_to_policy_action_index<stage>({card_id,status_id,is_SP_attack});
+        int P_network_index = choice_to_policy_action_network_index<stage>({card_id,status_id,is_SP_attack});
         int P_index = choice_to_valid_actions_index(is_placement_P1,{card_id,status_id,is_SP_attack});
 
         //代入
@@ -296,16 +304,16 @@ template<class stage> void AI_PV_ISMCTS<stage>::expansion_action(const int leaf_
     }
     //rootのP1だけには、Pにディリクレノイズを載せる
     if(now_pos == root_pos && is_placement_P1 && add_dirichlet_noise){
-      std::vector<float> noises = dirichlet_noise(alpha,P.size());
-      for(int card_id:card_id_in_deck)
-      for(bool is_SP_attack:{false,true}){
-        for(int status_id=(is_SP_attack ? 0:-1);status_id<stage::card_status_size[card_id];status_id++){
-          int P_index = choice_to_valid_actions_index(is_placement_P1,{card_id,status_id,is_SP_attack});
-          P_card[P_card_index[card_id]][is_SP_attack] -= P[P_index];
-          P[P_index] = (1-eps)*P[P_index]+eps*noises[P_index];
-          P_card[P_card_index[card_id]][is_SP_attack] += P[P_index];
-        }
-      }
+      noises = dirichlet_noise(alpha,P.size());
+      // for(int card_id:card_id_in_deck)
+      // for(bool is_SP_attack:{false,true}){
+      //   for(int status_id=(is_SP_attack ? 0:-1);status_id<stage::card_status_size[card_id];status_id++){
+      //     int P_index = choice_to_valid_actions_index(is_placement_P1,{card_id,status_id,is_SP_attack});
+      //     P_card[P_card_index[card_id]][is_SP_attack] -= P[P_index];
+      //     P[P_index] = (1-eps)*P[P_index]+eps*noises[P_index];
+      //     P_card[P_card_index[card_id]][is_SP_attack] += P[P_index];
+      //   }
+      // }
     }
   }
 }
@@ -566,4 +574,16 @@ template<class stage> std::vector<std::pair<Choice<stage>,float>> AI_PV_ISMCTS<s
   for(auto [choice,policy]:policy_action) std::cerr << policy << " ";
   std::cerr << std::endl;
   return policy_action;
+}
+
+template<class stage> std::vector<std::pair<Choice<stage>,float>> AI_PV_ISMCTS<stage>::get_policy_action_network() const {
+  assert(root_current_turn > 0);
+  assert(P_P1[root_pos].size() == valid_actions_P1.size());
+  
+  std::vector<std::pair<Choice<stage>,float>> policy_action_network;
+  policy_action_network.reserve(valid_actions_P1.size());
+  for(int i=0;i<valid_actions_P1.size();i++){
+    policy_action_network.emplace_back(valid_actions_P1[i],P_P1[root_pos][i]);
+  }
+  return policy_action_network;
 }

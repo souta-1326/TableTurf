@@ -48,6 +48,7 @@ public:
   std::vector<Choice<stage>> get_actions(const std::vector<Board<stage>> &board_P1s,const std::vector<Board<stage>> &board_P2s,const std::vector<Deck> &decks) override;
   std::vector<std::vector<float>> get_policy_redraws() const;
   std::vector<std::vector<std::pair<Choice<stage>,float>>> get_policy_actions() const;
+  std::vector<std::vector<std::pair<Choice<stage>,float>>> get_policy_actions_network() const;
 
   void set_deck_P1s(const std::vector<Deck> &deck_P1s) override;
   void set_deck_P2s(const std::vector<Deck> &deck_P2s) override;
@@ -180,6 +181,12 @@ template<class stage> std::vector<std::vector<std::pair<Choice<stage>,float>>> A
   std::vector<std::vector<std::pair<Choice<stage>,float>>> policy_actions(group_size);
   for(int i=0;i<group_size;i++) policy_actions[i] = searchers[i].get_policy_action();
   return policy_actions;
+}
+
+template<class stage> std::vector<std::vector<std::pair<Choice<stage>,float>>> AI_PV_ISMCTS_Group<stage>::get_policy_actions_network() const {
+  std::vector<std::vector<std::pair<Choice<stage>,float>>> policy_actions_network(group_size);
+  for(int i=0;i<group_size;i++) policy_actions_network[i] = searchers[i].get_policy_action_network();
+  return policy_actions_network;
 }
 
 template<class stage> void AI_PV_ISMCTS_Group<stage>::set_deck_P1s(const std::vector<Deck> &deck_P1s){
