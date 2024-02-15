@@ -42,10 +42,11 @@ template<class stage> void selfplay(
   //redraw phase
   std::vector<bool> do_redraw_decks = agent.redraws(incorporate(deck_P1s,deck_P2s));
   std::vector<std::vector<float>> policy_redraws = agent.get_policy_redraws();
+  std::vector<std::vector<std::pair<Choice<stage>,float>>> policy_actions_network = agent.get_policy_actions_network();
   for(int i=0;i<num_games;i++){
     //recordsを更新
-    records[i*2].push_back({board_P1s[i],deck_P1s[i],deck_P2s[i],policy_redraws[i*2],std::vector<std::pair<Choice<stage>,float>>(),0.0F});
-    records[i*2+1].push_back({board_P2s[i],deck_P2s[i],deck_P1s[i],policy_redraws[i*2+1],std::vector<std::pair<Choice<stage>,float>>(),0.0F});
+    records[i*2].push_back({board_P1s[i],deck_P1s[i],deck_P2s[i],policy_redraws[i*2],construct_policy_action_for_learning(policy_actions_network[i*2]),0.0F});
+    records[i*2+1].push_back({board_P2s[i],deck_P2s[i],deck_P1s[i],policy_redraws[i*2+1],construct_policy_action_for_learning(policy_actions_network[i*2+1]),0.0F});
 
     //デッキを操作
     if(do_redraw_decks[i*2]) deck_P1s[i].reset();

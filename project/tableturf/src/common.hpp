@@ -123,7 +123,7 @@ template<class T> std::vector<T> incorporate(const std::vector<T> &x,const std::
 //2. デッキ内のpolicyの総和を1にするように、デッキ内のpolicyに定数倍を掛ける
 template<class stage> std::vector<std::pair<Choice<stage>,float>> construct_policy_action_for_learning
 (const std::vector<std::pair<Choice<stage>,float>> &policy_action_AI,const std::vector<std::pair<Choice<stage>,float>> &policy_action_network,const Deck &deck){
-  std::vector<int> card_id_in_hand = deck.get_hand(),card_id_in_deck = deck.get_deck();
+  std::vector<int> card_id_in_hand = deck.get_hand();
 
   std::vector<short> is_in_hand(N_card+1);
   for(int card_id:card_id_in_hand) is_in_hand[card_id] = true;
@@ -149,6 +149,22 @@ template<class stage> std::vector<std::pair<Choice<stage>,float>> construct_poli
     //2. sum_of_policy_action_network_in_deckで割る
     policy_action_for_learning.emplace_back(choice,policy/sum_of_policy_action_network_in_deck);
   }
-  assert(policy_action_for_learning.size() == policy_action_network.size());
+  return policy_action_for_learning;
+}
+//こっちはpolicy_action_networkだけを見る(redraw用)
+template<class stage> std::vector<std::pair<Choice<stage>,float>> construct_policy_action_for_learning
+(const std::vector<std::pair<Choice<stage>,float>> &policy_action_network){
+  //事前準備
+  float sum_of_policy_action_network_in_deck = 0;
+  for(const auto &[choice,policy]:policy_action_network){
+    sum_of_policy_action_network_in_deck += policy;
+  }
+
+  std::vector<std::pair<Choice<stage>,float>> policy_action_for_learning;
+  policy_action_for_learning.reserve(policy_action_network.size());
+  for(const auto &[choice,policy]:policy_action_network){
+    //2. sum_of_policy_action_network_in_deckで割る
+    policy_action_for_learning.emplace_back(choice,policy/sum_of_policy_action_network_in_deck);
+  }
   return policy_action_for_learning;
 }
