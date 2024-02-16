@@ -25,13 +25,13 @@ template<class stage> void selfplay(
   
   std::vector<std::vector<Sample<stage>>> records(group_size);
   AI_PV_ISMCTS_Group<stage>
-  agent(group_size,model,device,dtype,num_simulations,diff_bonus,true,dirichlet_alpha,eps);
+  agents(group_size,model,device,dtype,num_simulations,diff_bonus,true,dirichlet_alpha,eps);
 
   std::vector<Board<stage>> board_P1s(num_games),board_P2s(num_games);
 
   //set_deck
-  agent.set_deck_P1s(incorporate(deck_P1s,deck_P2s));
-  agent.set_deck_P2s(incorporate(deck_P2s,deck_P1s));
+  agents.set_deck_P1s(incorporate(deck_P1s,deck_P2s));
+  agents.set_deck_P2s(incorporate(deck_P2s,deck_P1s));
 
   //試合開始
 
@@ -40,13 +40,13 @@ template<class stage> void selfplay(
   for(Deck &deck_P2:deck_P2s) deck_P2.reset();
 
   //redraw phase
-  std::vector<bool> do_redraw_decks = agent.redraws(incorporate(deck_P1s,deck_P2s));
-  std::vector<std::vector<float>> policy_redraws = agent.get_policy_redraws();
-  std::vector<std::vector<std::pair<Choice<stage>,float>>> policy_actions_network = agent.get_policy_actions_network();
+  std::vector<bool> do_redraw_decks = agents.redraws(incorporate(deck_P1s,deck_P2s));
+  std::vector<std::vector<float>> policy_redraws = agents.get_policy_redraws();
+  std::vector<std::vector<std::pair<Choice<stage>,float>>> policy_actions_network = agents.get_policy_actions_network();
   for(int i=0;i<num_games;i++){
     //recordsを更新
-    records[i*2].push_back({board_P1s[i],deck_P1s[i],deck_P2s[i],policy_redraws[i*2],construct_policy_action_for_learning(policy_actions_network[i*2]),0.0F});
-    records[i*2+1].push_back({board_P2s[i],deck_P2s[i],deck_P1s[i],policy_redraws[i*2+1],construct_policy_action_for_learning(policy_actions_network[i*2+1]),0.0F});
+    records[i*2].push_back({board_P1s[i],true,deck_P1s[i],deck_P2s[i],policy_redraws[i*2],construct_policy_action_for_learning(policy_actions_network[i*2]),0.0F});
+    records[i*2+1].push_back({board_P2s[i],true,deck_P2s[i],deck_P1s[i],policy_redraws[i*2+1],construct_policy_action_for_learning(policy_actions_network[i*2+1]),0.0F});
 
     //デッキを操作
     if(do_redraw_decks[i*2]) deck_P1s[i].reset();
@@ -58,13 +58,13 @@ template<class stage> void selfplay(
   //action phase
   for(int current_turn = 1;current_turn <= Board<stage>::TURN_MAX;current_turn++){
     std::vector<Choice<stage>> choices = 
-    agent.get_actions(incorporate(board_P1s,board_P2s),incorporate(board_P2s,board_P1s),incorporate(deck_P1s,deck_P2s));
-    std::vector<std::vector<std::pair<Choice<stage>,float>>> policy_actions = agent.get_policy_actions();
-    std::vector<std::vector<std::pair<Choice<stage>,float>>> policy_actions_network = agent.get_policy_actions_network();
+    agents.get_actions(incorporate(board_P1s,board_P2s),incorporate(board_P2s,board_P1s),incorporate(deck_P1s,deck_P2s));
+    std::vector<std::vector<std::pair<Choice<stage>,float>>> policy_actions = agents.get_policy_actions();
+    std::vector<std::vector<std::pair<Choice<stage>,float>>> policy_actions_network = agents.get_policy_actions_network();
     for(int i=0;i<num_games;i++){
       //recordsを更新
-      records[i*2].push_back({board_P1s[i],deck_P1s[i],deck_P2s[i],std::vector<float>(),construct_policy_action_for_learning(policy_actions[i*2],policy_actions_network[i*2],deck_P1s[i]),0.0F});
-      records[i*2+1].push_back({board_P2s[i],deck_P2s[i],deck_P1s[i],std::vector<float>(),construct_policy_action_for_learning(policy_actions[i*2+1],policy_actions_network[i*2+1],deck_P2s[i]),0.0F});
+      records[i*2].push_back({board_P1s[i],false,deck_P1s[i],deck_P2s[i],std::vector<float>(),construct_policy_action_for_learning(policy_actions[i*2],policy_actions_network[i*2],deck_P1s[i]),0.0F});
+      records[i*2+1].push_back({board_P2s[i],false,deck_P2s[i],deck_P1s[i],std::vector<float>(),construct_policy_action_for_learning(policy_actions[i*2+1],policy_actions_network[i*2+1],deck_P2s[i]),0.0F});
 
       //カードを置く
       assert(board_P1s[i].is_valid_placement(true,choices[i*2]));
