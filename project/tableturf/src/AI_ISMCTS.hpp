@@ -258,6 +258,13 @@ template<class stage> void AI_ISMCTS<stage>::set_root(const Board<stage> &board_
   this->root_board_P1 = board_P1;
   this->root_board_P2 = board_P2;
   used_node_count = 0;
+  //deck内のカード一致チェック
+  {
+  std::vector<int> before_card_id_in_deck = deck_P1.get_deck(),now_card_id_in_deck = deck.get_deck();
+  std::sort(before_card_id_in_deck.begin(),before_card_id_in_deck.end());
+  std::sort(now_card_id_in_deck.begin(),now_card_id_in_deck.end());
+  assert(before_card_id_in_deck == now_card_id_in_deck);
+  }
   deck_P1 = deck;
   //ターン1で、redrawをしなかったなら、posを変更して引き継ぐ
   if(!did_redraw_deck && root_current_turn == 1){
