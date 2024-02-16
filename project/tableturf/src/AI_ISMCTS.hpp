@@ -259,11 +259,12 @@ template<class stage> void AI_ISMCTS<stage>::set_root(const Board<stage> &board_
   this->root_board_P2 = board_P2;
   used_node_count = 0;
   deck_P1 = deck;
-  //ターン1で、redrawをしなかったなら、posを1に変更して引き継ぐ
+  //ターン1で、redrawをしなかったなら、posを変更して引き継ぐ
   if(!did_redraw_deck && root_current_turn == 1){
-    root_pos = 1;return;
+    assert((pos_map[{root_pos,0,0}] == 1));
+    root_pos = pos_map[{root_pos,0,0}];return;
   }
-  //木の再利用はしないので、root_posは常に0
+  //そうでない場合、root_posは常に0
   //木をリセット
   root_pos = 0;
   W_P1.clear();W_P2.clear();

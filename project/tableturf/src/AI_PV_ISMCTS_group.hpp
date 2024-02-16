@@ -79,9 +79,12 @@ template<class stage> void AI_PV_ISMCTS_Group<stage>::evaluation(){
     auto &[leaf_pos,leaf_index_P1,leaf_index_P2,leaf_board_P1,leaf_board_P2,leaf_deck_P1,leaf_deck_P2] = leaf_states[i];
     //盤面が終了していたら、networkは用いない
     if(leaf_board_P1.current_turn > Board<stage>::TURN_MAX) continue;
-    std::vector<float> state_array_P1 = construct_image_vector(leaf_board_P1,leaf_deck_P1,leaf_deck_P2);
+
+    int expanded_pos = searchers[i].W_P1.size();
+    bool is_redraw_phase = searchers[i].is_redraw_node(expanded_pos);
+    std::vector<float> state_array_P1 = construct_image_vector(leaf_board_P1,leaf_deck_P1,leaf_deck_P2,is_redraw_phase);
     std::copy(state_array_P1.begin(),state_array_P1.end(),batch_state_array.begin()+i*(2*INPUT_C*stage::h*stage::w));
-    std::vector<float> state_array_P2 = construct_image_vector(leaf_board_P2,leaf_deck_P2,leaf_deck_P1);
+    std::vector<float> state_array_P2 = construct_image_vector(leaf_board_P2,leaf_deck_P2,leaf_deck_P1,is_redraw_phase);
     std::copy(state_array_P2.begin(),state_array_P2.end(),batch_state_array.begin()+i*(2*INPUT_C*stage::h*stage::w)+(INPUT_C*stage::h*stage::w));
   }
   torch::Tensor state_tensor = torch::tensor(torch::ArrayRef<float>(batch_state_array)).reshape({group_size*2,INPUT_C,stage::h,stage::w}).to(device,dtype);
@@ -114,7 +117,7 @@ template<class stage> void AI_PV_ISMCTS_Group<stage>::simulate(){
       //redrawノードであればexpansion_redraw
       int expanded_pos = searchers[i].W_P1.size();
       if(searchers[i].is_redraw_node(expanded_pos)) searchers[i].expansion_redraw(policy_redraw_tensor[i][0]);
-      else searchers[i].expansion_action(leaf_pos,leaf_index_P1,leaf_index_P2,policy_action_tensor[i][0],policy_action_tensor[i][1]);
+      else searchers[i].expansion_action(leaf_pos,leaf_index_P1,leaf_index_P2,leaf_board_P1,policy_action_tensor[i][0],policy_action_tensor[i][1]);
 
       value_P1 = searchers[i].get_network_value(value_tensor[i]);
     }
@@ -123,6 +126,8 @@ template<class stage> void AI_PV_ISMCTS_Group<stage>::simulate(){
   }
 }
 template<class stage> std::vector<bool> AI_PV_ISMCTS_Group<stage>::redraws(const std::vector<Deck> &deck_P1s){
+  assert(deck_P1s.size() == group_size);
+
   for(int i=0;i<group_size;i++){
     searchers[i].root_current_turn = 0;
     searchers[i].set_root(Board<stage>(),Board<stage>(),deck_P1s[i]);
@@ -148,6 +153,10 @@ template<class stage> std::vector<bool> AI_PV_ISMCTS_Group<stage>::redraws(const
 }
 
 template<class stage> std::vector<Choice<stage>> AI_PV_ISMCTS_Group<stage>::get_actions(const std::vector<Board<stage>> &board_P1s,const std::vector<Board<stage>> &board_P2s,const std::vector<Deck> &decks){
+  assert(board_P1s.size() == group_size);
+  assert(board_P2s.size() == group_size);
+  assert(decks.size() == group_size);
+
   for(int i=0;i<group_size;i++){
     searchers[i].root_current_turn = board_P1s[i].get_current_turn();
     searchers[i].set_root(board_P1s[i],board_P2s[i],decks[i]);
@@ -190,8 +199,10 @@ template<class stage> std::vector<std::vector<std::pair<Choice<stage>,float>>> A
 }
 
 template<class stage> void AI_PV_ISMCTS_Group<stage>::set_deck_P1s(const std::vector<Deck> &deck_P1s){
+  assert(deck_P1s.size() == group_size);
   for(int i=0;i<group_size;i++) searchers[i].set_deck_P1(deck_P1s[i]);
 }
 template<class stage> void AI_PV_ISMCTS_Group<stage>::set_deck_P2s(const std::vector<Deck> &deck_P2s){
+  assert(deck_P2s.size() == group_size);
   for(int i=0;i<group_size;i++) searchers[i].set_deck_P2(deck_P2s[i]);
 }

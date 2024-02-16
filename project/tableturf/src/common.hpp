@@ -21,7 +21,7 @@ template<class stage> int choice_to_policy_action_network_index(const Choice<sta
 }
 
 //入力を作成
-template<class stage> std::vector<float> construct_image_vector(const Board<stage> &board,const Deck &deck_P1,const Deck &deck_P2){
+template<class stage> std::vector<float> construct_image_vector(const Board<stage> &board,const Deck &deck_P1,const Deck &deck_P2,bool is_redraw_phase){
   std::vector<float> state_array(INPUT_C*stage::h*stage::w);//1次元化
   //通常マス,SPマス,壁&盤面外(5,0~4)
   {
@@ -52,8 +52,8 @@ template<class stage> std::vector<float> construct_image_vector(const Board<stag
     }
   }
   }
-  //何ターン目か(12,5~16)
-  {
+  //何ターン目か(12,5~16) redraw_phaseは0ターン目とみなして何もしない
+  if(!is_redraw_phase){
   assert(1 <= board.get_current_turn() && board.get_current_turn() <= Board<stage>::TURN_MAX);
   int channel_index = 5+(board.get_current_turn()-1);
   std::fill(state_array.begin()+channel_index*(stage::h*stage::w),state_array.begin()+(channel_index+1)*(stage::h*stage::w),1);

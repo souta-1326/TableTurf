@@ -93,11 +93,11 @@ template<class stage> class AI_PV_ISMCTS : public Agent<stage>{
   
   //展開しつつPとP_cardを更新
   //policy_tensorは(N_card*(1(パス)+H*W*4(通常)+H*W*4(SP)))の形
-  void expansion_action(const int leaf_pos,const int leaf_index_P1,const int leaf_index_P2,const torch::Tensor &policy_tensor_P1,const torch::Tensor &policy_tensor_P2);
+  void expansion_action(const int leaf_pos,const int leaf_index_P1,const int leaf_index_P2,const Board<stage> &leaf_board_P1,const torch::Tensor &policy_tensor_P1,const torch::Tensor &policy_tensor_P2);
   //policy_tensorは(2(redrawしない,redrawする))の形
   void expansion_redraw(const torch::Tensor &policy_tensor_P1);
 
-  void evaluation(const Board<stage> &leaf_board_P1,const Board<stage> &leaf_board_P2,const Deck &leaf_deck_P1,const Deck &leaf_deck_P2);
+  void evaluation(const Board<stage> &leaf_board_P1,const Board<stage> &leaf_board_P2,const Deck &leaf_deck_P1,const Deck &leaf_deck_P2,const bool is_redraw_phase);
   //networkによるスコアを求める
   float get_network_value() const;
   float get_network_value(const torch::Tensor &value_tensor_from_group) const;//AI_PV_ISMCTS_Group用
@@ -196,7 +196,8 @@ template<class stage> std::tuple<int,int,int,Board<stage>,Board<stage>,Deck,Deck
       float max_PUCB_score = -1e9;
       if(is_redraw_node(now_pos)){
         for(int i=0;i<W.size();i++){
-          float now_PUCB_score = PUCB_score(W[i],N[i],n_parent,P[i]);
+          //not_redraw(i==0)を1回探索してもらわないと困るので、redrawの時に限ってN[i]==0のときは優先して探索
+          float now_PUCB_score = (N[i]==0 ? 1e9:PUCB_score(W[i],N[i],n_parent,P[i]));
           if(max_PUCB_score < now_PUCB_score){
             max_PUCB_score = now_PUCB_score;
             chosen_index = i;
@@ -227,7 +228,7 @@ template<class stage> std::tuple<int,int,int,Board<stage>,Board<stage>,Deck,Deck
             if(!simulated_board_P1.is_valid_placement_without_SP_point_validation(is_placement_P1,valid_actions[now_index])) continue;
             
             //rootなら、Pにディリクレノイズを足す
-            float now_PUCB_score = PUCB_score(W[now_index],N[now_index],n_parent,P[now_index]/sum_valid_policy+(now_pos == root_pos ? noises[now_index]:0));
+            float now_PUCB_score = PUCB_score(W[now_index],N[now_index],n_parent,P[now_index]/sum_valid_policy+(add_dirichlet_noise && is_placement_P1 && now_pos == root_pos ? noises[now_index]:0));
             if(max_PUCB_score < now_PUCB_score){
               max_PUCB_score = now_PUCB_score;
               chosen_index = now_index;
@@ -263,7 +264,7 @@ template<class stage> std::tuple<int,int,int,Board<stage>,Board<stage>,Deck,Deck
 template<class stage> bool AI_PV_ISMCTS<stage>::is_redraw_node(int pos) const {
   return root_current_turn == 0 && pos == 0;
 }
-template<class stage> void AI_PV_ISMCTS<stage>::expansion_action(const int leaf_pos,const int leaf_index_P1,const int leaf_index_P2,const torch::Tensor &policy_tensor_P1,const torch::Tensor &policy_tensor_P2){
+template<class stage> void AI_PV_ISMCTS<stage>::expansion_action(const int leaf_pos,const int leaf_index_P1,const int leaf_index_P2,const Board<stage> &leaf_board_P1,const torch::Tensor &policy_tensor_P1,const torch::Tensor &policy_tensor_P2){
   //展開
   int now_pos = W_P1.size();
   pos_map[{leaf_pos,leaf_index_P1,leaf_index_P2}] = now_pos;
@@ -292,7 +293,9 @@ template<class stage> void AI_PV_ISMCTS<stage>::expansion_action(const int leaf_
     }
     for(int card_id:card_id_in_deck)
     for(bool is_SP_attack:{false,true}){
+      if(is_SP_attack && !leaf_board_P1.is_enough_SP_point(is_placement_P1,card_id)) continue;
       for(int status_id=(is_SP_attack ? 0:-1);status_id<stage::card_status_size[card_id];status_id++){
+        if(!leaf_board_P1.is_valid_placement_without_SP_point_validation(is_placement_P1,{card_id,status_id,is_SP_attack})) continue;
         int P_network_index = choice_to_policy_action_network_index<stage>({card_id,status_id,is_SP_attack});
         int P_index = choice_to_valid_actions_index(is_placement_P1,{card_id,status_id,is_SP_attack});
 
@@ -301,19 +304,6 @@ template<class stage> void AI_PV_ISMCTS<stage>::expansion_action(const int leaf_
 
         P_card[P_card_index[card_id]][is_SP_attack] += P_network[P_network_index];
       }
-    }
-    //rootのP1だけには、Pにディリクレノイズを載せる
-    if(now_pos == root_pos && is_placement_P1 && add_dirichlet_noise){
-      noises = dirichlet_noise(alpha,P.size());
-      // for(int card_id:card_id_in_deck)
-      // for(bool is_SP_attack:{false,true}){
-      //   for(int status_id=(is_SP_attack ? 0:-1);status_id<stage::card_status_size[card_id];status_id++){
-      //     int P_index = choice_to_valid_actions_index(is_placement_P1,{card_id,status_id,is_SP_attack});
-      //     P_card[P_card_index[card_id]][is_SP_attack] -= P[P_index];
-      //     P[P_index] = (1-eps)*P[P_index]+eps*noises[P_index];
-      //     P_card[P_card_index[card_id]][is_SP_attack] += P[P_index];
-      //   }
-      // }
     }
   }
 }
@@ -340,12 +330,12 @@ template<class stage> void AI_PV_ISMCTS<stage>::expansion_redraw(const torch::Te
   }
 }
 
-template<class stage> void AI_PV_ISMCTS<stage>::evaluation(const Board<stage> &leaf_board_P1,const Board<stage> &leaf_board_P2,const Deck &leaf_deck_P1,const Deck &leaf_deck_P2){
+template<class stage> void AI_PV_ISMCTS<stage>::evaluation(const Board<stage> &leaf_board_P1,const Board<stage> &leaf_board_P2,const Deck &leaf_deck_P1,const Deck &leaf_deck_P2,const bool is_redraw_phase){
   //入力を作成
   std::vector<float> batch_state_array(2*INPUT_C*stage::h*stage::w);
-  std::vector<float> state_array_P1 = construct_image_vector(leaf_board_P1,leaf_deck_P1,leaf_deck_P2);
+  std::vector<float> state_array_P1 = construct_image_vector(leaf_board_P1,leaf_deck_P1,leaf_deck_P2,is_redraw_phase);
   std::copy(state_array_P1.begin(),state_array_P1.end(),batch_state_array.begin());
-  std::vector<float> state_array_P2 = construct_image_vector(leaf_board_P2,leaf_deck_P2,leaf_deck_P1);
+  std::vector<float> state_array_P2 = construct_image_vector(leaf_board_P2,leaf_deck_P2,leaf_deck_P1,is_redraw_phase);
   std::copy(state_array_P2.begin(),state_array_P2.end(),batch_state_array.begin()+INPUT_C*stage::h*stage::w);
   torch::Tensor state_tensor = torch::tensor(torch::ArrayRef<float>(batch_state_array)).reshape({2,INPUT_C,stage::h,stage::w}).to(device,dtype);
 
@@ -401,14 +391,15 @@ template<class stage> void AI_PV_ISMCTS<stage>::simulate(){
   }
   //そうでなければ、expansionしつつnetworkのvalueを参照
   else{
-    //policy_action_tensor,policy_redraw_tensor,value_tensorを取得
-    evaluation(leaf_board_P1,leaf_board_P2,leaf_deck_P1,leaf_deck_P2);
-
     int expanded_pos = W_P1.size();
+
+    //policy_action_tensor,policy_redraw_tensor,value_tensorを取得
+    evaluation(leaf_board_P1,leaf_board_P2,leaf_deck_P1,leaf_deck_P2,is_redraw_node(expanded_pos));
+
     //redrawノードであればexpansion_redraw
     if(is_redraw_node(expanded_pos)) expansion_redraw(policy_redraw_tensor[0]);
     //そうでなければexpansion_action
-    else expansion_action(leaf_pos,leaf_index_P1,leaf_index_P2,policy_action_tensor[0],policy_action_tensor[1]);
+    else expansion_action(leaf_pos,leaf_index_P1,leaf_index_P2,leaf_board_P1,policy_action_tensor[0],policy_action_tensor[1]);
 
     value_P1 = get_network_value();
   }
@@ -420,7 +411,18 @@ template<class stage> void AI_PV_ISMCTS<stage>::set_root(const Board<stage> &boa
   this->root_board_P1 = board_P1;
   this->root_board_P2 = board_P2;
   deck_P1 = deck;
-  //木の再利用はしないので、root_posは常に0
+
+  //rootのP1だけには、Pにディリクレノイズを載せる
+  if(root_current_turn > 0 && add_dirichlet_noise){
+    noises = dirichlet_noise(alpha,P_P1[root_pos].size());
+  }
+
+  //ターン1で、redrawをしなかったなら、posを変更して引き継ぐ
+  if(!did_redraw_deck && root_current_turn == 1){
+    assert((pos_map[{root_pos,0,0}] == 1));
+    root_pos = pos_map[{root_pos,0,0}];return;
+  }
+  //そうでない場合、root_posは常に0
   //木をリセット
   root_pos = 0;
   P_P1.clear();P_P2.clear();
@@ -567,23 +569,25 @@ template<class stage> std::vector<std::pair<Choice<stage>,float>> AI_PV_ISMCTS<s
   for(bool is_SP_attack:{false,true}){
     for(int status_id=(is_SP_attack ? 0:-1);status_id<stage::card_status_size[card_id];status_id++){
       int now_index = choice_to_valid_actions_index(true,{card_id,status_id,is_SP_attack});
+      if(N_P1[root_pos][now_index]==0) continue;
       policy_action.emplace_back(valid_actions_P1[now_index],float(N_P1[root_pos][now_index])/N_root);
     }
   }
 
-  for(auto [choice,policy]:policy_action) std::cerr << policy << " ";
+  for(auto [choice,policy]:policy_action) std::cerr << choice.status_id << " " << policy << " ";
   std::cerr << std::endl;
   return policy_action;
 }
 
 template<class stage> std::vector<std::pair<Choice<stage>,float>> AI_PV_ISMCTS<stage>::get_policy_action_network() const {
-  assert(root_current_turn > 0);
-  assert(P_P1[root_pos].size() == valid_actions_P1.size());
+  if(root_current_turn == 0) assert(pos_map.at({root_pos,0,0}) == 1);
+  int now_pos = (root_current_turn == 0 ? pos_map.at({root_pos,0,0}):root_pos);
+  assert(P_P1[now_pos].size() == valid_actions_P1.size());
   
   std::vector<std::pair<Choice<stage>,float>> policy_action_network;
-  policy_action_network.reserve(valid_actions_P1.size());
   for(int i=0;i<valid_actions_P1.size();i++){
-    policy_action_network.emplace_back(valid_actions_P1[i],P_P1[root_pos][i]);
+    if(P_P1[now_pos][i] == 0) continue;
+    policy_action_network.emplace_back(valid_actions_P1[i],P_P1[now_pos][i]);
   }
   return policy_action_network;
 }

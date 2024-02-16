@@ -11,6 +11,7 @@
 #include "common.hpp"
 template<class stage> struct Sample{
   Board<stage> board;
+  bool is_redraw_phase;
   Deck deck_P1,deck_P2;
   std::vector<float> policy_redraw;
   std::vector<std::pair<Choice<stage>,float>> policy_action;
@@ -39,7 +40,7 @@ template<class stage> void Buffer<stage>::write(std::string file_name){
   //データの個数を出力
   fout << buffer.size() << '\n';
 
-  for(const auto &[board,deck_P1,deck_P2,policy_redraw,policy_action,value]:buffer){
+  for(const auto &[board,is_redraw_phase,deck_P1,deck_P2,policy_redraw,policy_action,value]:buffer){
     //入力
     {
     //通常マス,SPマス,壁&盤面外(5,0~4)
@@ -61,7 +62,7 @@ template<class stage> void Buffer<stage>::write(std::string file_name){
     //この後はchannelを1でfillするもののみなので、fillするchannel_indexを列挙する
     std::vector<int> filled_channel_indexes;
     //何ターン目か(12,5~16)
-    {
+    if(!is_redraw_phase){
     assert(1 <= board.get_current_turn() && board.get_current_turn() <= Board<stage>::TURN_MAX);
     int channel_index = 5+(board.get_current_turn()-1);
     filled_channel_indexes.emplace_back(channel_index);
