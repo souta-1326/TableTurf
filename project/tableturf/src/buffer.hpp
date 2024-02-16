@@ -20,25 +20,58 @@ template<class stage> struct Sample{
 
 template<class stage> class Buffer{
   std::deque<Sample<stage>> buffer;
-  int max_size;
+  long long max_size;
+  static constexpr long long N_ROWS_OF_DATA = 11;
 public:
-  Buffer(int max_size):max_size(max_size){}
-  constexpr int get_max_size(){return max_size;}
-  int get_current_size(){return buffer.size();}
+  Buffer(long long max_size):max_size(max_size){}
+  constexpr long long get_max_size(){return max_size;}
+  long long get_current_size(){return buffer.size();}
   void add_sample(const Sample<stage> &sample){
     buffer.push_back(sample);
     if(get_current_size() > get_max_size()) buffer.pop_front();
   }
+  //ファイルに書き出し(既にある場合は上書き)
   void write(std::string file_name);
-  void read(std::string file_name);
 };
 
 template<class stage> void Buffer<stage>::write(std::string file_name){
+  //既にあるデータの個数を取得
+  std::ifstream fin(file_name);
+  long long before_size;fin >> before_size;
+  bool is_file_empty;
+  //ファイルが空の場合は、既にあるデータの個数は0とみなす
+  if(fin.fail()){
+    before_size = 0;
+    is_file_empty = true;
+  }
+  else is_file_empty = false;
+  long long discarded_size = std::max(0LL,before_size+get_current_size()-get_max_size());//捨てられるデータの個数
+  long long kept_size = before_size-discarded_size;//保持されるデータの個数
+  long long next_size = std::min(before_size+get_current_size(),get_max_size());//ファイルに書き込まれるデータの個数
+  long long ignored_raws = (is_file_empty ? 0:1+discarded_size*N_ROWS_OF_DATA);
+  long long read_raws = kept_size*N_ROWS_OF_DATA;
+
+  //ignored_raws行読んで捨てる
+  {
+  std::string trash;
+  for(long long i=0;i<ignored_raws;i++) std::getline(fin,trash);
+  }
+  //read_raws行読んで保持
+  std::string kept_raws;
+  for(long long i=0;i<read_raws;i++){
+    std::string current_raw;
+    std::getline(fin,current_raw);
+    kept_raws += current_raw+"\n";
+  }
+
   std::ofstream fout(file_name);
   fout << std::fixed << std::setprecision(5);//floatの桁数を固定
 
   //データの個数を出力
-  fout << buffer.size() << '\n';
+  fout << next_size << '\n';
+
+  //以前のファイルデータの一部を出力
+  fout << kept_raws;
 
   for(const auto &[board,is_redraw_phase,deck_P1,deck_P2,policy_redraw,policy_action,value]:buffer){
     //入力
