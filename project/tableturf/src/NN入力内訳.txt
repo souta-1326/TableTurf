@@ -1,0 +1,12 @@
+0 square_P1
+1 square_SP_P1
+2 square_P2
+3 square_SP_P2
+4 壁、場外
+5~16 (x-4)ターン目である
+17~28 P1がSPポイントを(x-16)以上溜めている
+29~40 P1がSPポイントを(x-28)以上溜めている
+41~(40+N_card) P1がcard_id=(x-40)を未使用
+(41+N_card)~(40+N_card*2) P2がcard_id=(x-(40+N_card))を未使用
+
+N_card=232 (Season 6)
