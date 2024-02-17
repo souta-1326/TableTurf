@@ -59,14 +59,14 @@ template<class stage> std::vector<float> construct_image_vector(const Board<stag
   std::fill(state_array.begin()+channel_index*(stage::h*stage::w),state_array.begin()+(channel_index+1)*(stage::h*stage::w),1);
   }
   //SPがいくつ溜まってるか
-  //1P(12,17~28)
+  //P1(12,17~28)
   {
   int SP_point = board.SP_point_P1;
   SP_point = std::min(SP_point,12);//13以上の情報は要らない
   int channel_index_start = 17,channel_index_end = 17+SP_point;//半開区間
   std::fill(state_array.begin()+channel_index_start*(stage::h*stage::w),state_array.begin()+channel_index_end*(stage::h*stage::w),1);
   }
-  //2P(12,29~40)
+  //P2(12,29~40)
   {
   int SP_point = board.SP_point_P2;
   SP_point = std::min(SP_point,12);//13以上の情報は要らない
@@ -75,7 +75,7 @@ template<class stage> std::vector<float> construct_image_vector(const Board<stag
   }
   
   //未使用カード
-  //1P(N_card,41~(40+N_card))
+  //P1(N_card,41~(40+N_card))
   {
   std::vector<int> card_id_unused;
   std::vector<int> card_id_in_hand = deck_P1.get_hand();
@@ -88,7 +88,7 @@ template<class stage> std::vector<float> construct_image_vector(const Board<stag
     std::fill(state_array.begin()+channel_index*(stage::h*stage::w),state_array.begin()+(channel_index+1)*(stage::h*stage::w),1);
   }
   }
-  //2P(N_card,(41+N_card)~(40+N_card*2))
+  //P2(N_card,(41+N_card)~(40+N_card*2))
   {
   std::vector<int> card_id_unused;
   std::vector<int> card_id_in_hand = deck_P2.get_hand();
