@@ -30,49 +30,55 @@ public:
     buffer.push_back(sample);
     if(get_current_size() > get_max_size()) buffer.pop_front();
   }
-  //ファイルに書き出し(既にある場合は上書き)
-  void write(std::string file_name);
+  //ファイルに書き出し(keep_before_data=Trueのときは既にあるデータを残す)
+  void write(std::string file_name,bool keep_before_data);
 };
 
-template<class stage> void Buffer<stage>::write(std::string file_name){
-  //既にあるデータの個数を取得
-  std::ifstream fin(file_name);
-  long long before_size;fin >> before_size;
-  bool is_file_empty;
-  //ファイルが空の場合は、既にあるデータの個数は0とみなす
-  if(fin.fail()){
-    before_size = 0;
-    is_file_empty = true;
-  }
-  else is_file_empty = false;
-  long long discarded_size = std::max(0LL,before_size+get_current_size()-get_max_size());//捨てられるデータの個数
-  long long kept_size = before_size-discarded_size;//保持されるデータの個数
-  long long next_size = std::min(before_size+get_current_size(),get_max_size());//ファイルに書き込まれるデータの個数
-  long long ignored_raws = (is_file_empty ? 0:1+discarded_size*N_ROWS_OF_DATA);
-  long long read_raws = kept_size*N_ROWS_OF_DATA;
-
-  //ignored_raws行読んで捨てる
-  {
-  std::string trash;
-  for(long long i=0;i<ignored_raws;i++) std::getline(fin,trash);
-  }
-  //read_raws行読んで保持
+template<class stage> void Buffer<stage>::write(std::string file_name,bool keep_before_data){
+  long long next_size;
   std::string kept_raws;
-  for(long long i=0;i<read_raws;i++){
-    std::string current_raw;
-    std::getline(fin,current_raw);
-    kept_raws += current_raw+"\n";
+  if(keep_before_data){
+    //既にあるデータの個数を取得
+    std::ifstream fin(file_name);
+    long long before_size;fin >> before_size;
+    bool is_file_empty;
+    //ファイルが空の場合は、既にあるデータの個数は0とみなす
+    if(fin.fail()){
+      before_size = 0;
+      is_file_empty = true;
+    }
+    else is_file_empty = false;
+    long long discarded_size = std::max(0LL,before_size+get_current_size()-get_max_size());//捨てられるデータの個数
+    long long kept_size = before_size-discarded_size;//保持されるデータの個数
+    next_size = std::min(before_size+get_current_size(),get_max_size());//ファイルに書き込まれるデータの個数
+    long long ignored_raws = (is_file_empty ? 0:1+discarded_size*N_ROWS_OF_DATA);
+    long long read_raws = kept_size*N_ROWS_OF_DATA;
+
+    //ignored_raws行読んで捨てる
+    {
+    std::string trash;
+    for(long long i=0;i<ignored_raws;i++) std::getline(fin,trash);
+    }
+    //read_raws行読んで保持
+    for(long long i=0;i<read_raws;i++){
+      std::string current_raw;
+      std::getline(fin,current_raw);
+      kept_raws += current_raw+"\n";
+    }
   }
-
   std::ofstream fout(file_name);
-  fout << std::fixed << std::setprecision(5);//floatの桁数を固定
+  if(keep_before_data){
+    fout << std::fixed << std::setprecision(5);//floatの桁数を固定
 
-  //データの個数を出力
-  fout << next_size << '\n';
+    //データの個数を出力
+    fout << next_size << '\n';
 
-  //以前のファイルデータの一部を出力
-  fout << kept_raws;
-
+    //以前のファイルデータの一部を出力
+    fout << kept_raws;
+  }
+  else{
+    fout << get_current_size() << '\n';
+  }
   for(const auto &[board,is_redraw_phase,deck_P1,deck_P2,policy_redraw,policy_action,value]:buffer){
     //入力
     {
@@ -101,7 +107,7 @@ template<class stage> void Buffer<stage>::write(std::string file_name){
     filled_channel_indexes.emplace_back(channel_index);
     }
     //SPがいくつ溜まってるか
-    //1P(12,17~28)
+    //P1(12,17~28)
     {
     int SP_point = board.SP_point_P1;
     SP_point = std::min(SP_point,12);//13以上の情報は要らない
@@ -110,7 +116,7 @@ template<class stage> void Buffer<stage>::write(std::string file_name){
       filled_channel_indexes.emplace_back(channel_index);
     }
     }
-    //2P(12,29~40)
+    //P2(12,29~40)
     {
     int SP_point = board.SP_point_P2;
     SP_point = std::min(SP_point,12);//13以上の情報は要らない
@@ -121,7 +127,7 @@ template<class stage> void Buffer<stage>::write(std::string file_name){
     }
 
     //未使用カード
-    //1P(N_card,41~(40+N_card))
+    //P1(N_card,41~(40+N_card))
     {
     std::vector<int> card_id_unused;
     std::vector<int> card_id_in_hand = deck_P1.get_hand();
@@ -134,7 +140,7 @@ template<class stage> void Buffer<stage>::write(std::string file_name){
       filled_channel_indexes.emplace_back(channel_index);
     }
     }
-    //2P(N_card,(41+N_card)~(40+N_card*2))
+    //P2(N_card,(41+N_card)~(40+N_card*2))
     {
     std::vector<int> card_id_unused;
     std::vector<int> card_id_in_hand = deck_P2.get_hand();
