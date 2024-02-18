@@ -3,8 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
-from network.common import *
 import time
+from .common import *
 
 class ResBlock(nn.Module):
   def __init__(self,filters,use_bias):
