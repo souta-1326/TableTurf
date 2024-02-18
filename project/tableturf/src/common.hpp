@@ -1,6 +1,8 @@
 #pragma once
 #include "choice.hpp"
 #include "card.hpp"
+#include "board.hpp"
+#include "deck.hpp"
 
 constexpr int INPUT_C = 2+2+1+12+12*2+N_card*2;
 template<class stage> constexpr int ACTION_SPACE_OF_EACH_CARD = stage::h*stage::w*8+1;
