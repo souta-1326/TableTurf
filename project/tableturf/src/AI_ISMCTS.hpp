@@ -32,6 +32,9 @@ template<class stage> class AI_ISMCTS : public Agent<stage>{
   //相手のデッキ 手札はわからない
   Deck deck_P2;
 
+  //ログ出力
+  bool logging;
+
   // valid actions
   // simulationごとに変わる手札によって、実際に合法な手は変わる
   // redraw用ノードを除いて全ノード共通なので、1次元vector
@@ -76,7 +79,7 @@ template<class stage> class AI_ISMCTS : public Agent<stage>{
   //simulate,evaluation,expansion,backupをする
   void simulate();
  public:
-  AI_ISMCTS(int num_simulations,float diff_bonus=0,bool use_evaluation_greedy=true);
+  AI_ISMCTS(int num_simulations,float diff_bonus=0,bool use_evaluation_greedy=true,bool logging=false);
   bool redraw(const Deck &deck) override;
   void set_deck_P1(const Deck &deck_P1) override;
   void set_deck_P2(const Deck &deck_P2) override;
@@ -84,8 +87,8 @@ template<class stage> class AI_ISMCTS : public Agent<stage>{
   
   void set_root(const Board<stage> &board_P1,const Board<stage> &board_P2,const Deck &deck);
 };
-template<class stage> AI_ISMCTS<stage>::AI_ISMCTS(int num_simulations,float diff_bonus,bool use_evaluation_greedy):
-num_simulations(num_simulations),diff_bonus(diff_bonus),use_evaluation_greedy(use_evaluation_greedy),
+template<class stage> AI_ISMCTS<stage>::AI_ISMCTS(int num_simulations,float diff_bonus,bool use_evaluation_greedy,bool logging):
+num_simulations(num_simulations),diff_bonus(diff_bonus),use_evaluation_greedy(use_evaluation_greedy),logging(logging),
 valid_actions_start_index_P1(N_card+1,std::vector<int>(2,-1)),valid_actions_start_index_P2(N_card+1,std::vector<int>(2,-1)){
   //rootとexpansionによって最終的にnum_simulations+1の長さになるので、その分メモリを確保する
   W_P1.reserve(num_simulations+1);W_P2.reserve(num_simulations+1);
@@ -268,7 +271,7 @@ template<class stage> void AI_ISMCTS<stage>::set_root(const Board<stage> &board_
   deck_P1 = deck;
   //ターン1で、redrawをしなかったなら、posを変更して引き継ぐ
   if(!did_redraw_deck && root_current_turn == 1){
-    assert((pos_map[{root_pos,0,0}] == 1));
+    assert((pos_map[{root_pos,0,0}] == 1 || pos_map[{root_pos,0,0}] == 2));
     root_pos = pos_map[{root_pos,0,0}];return;
   }
   //そうでない場合、root_posは常に0
@@ -349,6 +352,10 @@ template<class stage> bool AI_ISMCTS<stage>::redraw(const Deck &deck){
   //before_root_current_turnを更新
   before_root_current_turn = root_current_turn;
 
+  if(logging){
+    std::cerr << "USED_NODE_COUNT:" << used_node_count << std::endl;
+  }
+
   return do_redraw_deck;
 }
 template<class stage> Choice<stage> AI_ISMCTS<stage>::get_action(const Board<stage> &board_P1,const Board<stage> &board_P2,const Deck &deck){
@@ -369,7 +376,10 @@ template<class stage> Choice<stage> AI_ISMCTS<stage>::get_action(const Board<sta
   //before_root_current_turnを更新
   before_root_current_turn = root_current_turn;
 
-  std::cerr << max_N << " " << valid_actions_P1[chosen_action_pos].card_id << " " << W_P1[root_pos][chosen_action_pos]/N_P1[root_pos][chosen_action_pos] << std::endl;
-  std::cerr << "USED_NODE_COUNT:" << used_node_count << std::endl;
+  if(logging){
+    std::cerr << max_N << " " << valid_actions_P1[chosen_action_pos].card_id << " " << W_P1[root_pos][chosen_action_pos]/N_P1[root_pos][chosen_action_pos] << std::endl;
+    std::cerr << "USED_NODE_COUNT:" << used_node_count << std::endl;
+  }
+
   return valid_actions_P1[chosen_action_pos];
 }

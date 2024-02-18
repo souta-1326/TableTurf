@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <numeric>
 #include <functional>
+#include <omp.h>
 #include <torch/script.h>
 #include <torch/nn/functional/activation.h>
 #include "AI_PV_ISMCTS.hpp"
@@ -31,6 +32,9 @@ template<class stage> class AI_PV_ISMCTS_Group : public Agent_Group<stage>{
   c10::Device device;
   c10::ScalarType dtype;
 
+  //ログ出力
+  bool logging;
+
   void selection();
   void evaluation();
   void simulate();
@@ -41,6 +45,7 @@ public:
   const torch::jit::Module &model,c10::Device device,c10::ScalarType dtype,
   int num_simulations,float diff_bonus,
   bool add_dirichlet_noise,float alpha,float eps,
+  bool logging=false,
   float c_base=19652,float c_init=1.25);
 
   constexpr int get_group_size() const override {return group_size;}
@@ -59,22 +64,26 @@ int group_size,
 const torch::jit::Module &model,c10::Device device,c10::ScalarType dtype,
 int num_simulations,float diff_bonus,
 bool add_dirichlet_noise,float alpha,float eps,
+bool logging,
 float c_base,float c_init):
 group_size(group_size),num_simulations(num_simulations),
-searchers(group_size,AI_PV_ISMCTS<stage>(std::nullopt,device,dtype,num_simulations,diff_bonus,add_dirichlet_noise,alpha,eps,c_base,c_init)),
+searchers(group_size,AI_PV_ISMCTS<stage>(std::nullopt,device,dtype,num_simulations,diff_bonus,add_dirichlet_noise,alpha,eps,c_base,c_init,logging)),
+leaf_states(group_size),
 value_P1s(group_size),
-model(model),device(device),dtype(dtype){
-  leaf_states.reserve(group_size);
-}
+model(model),device(device),dtype(dtype),
+logging(logging){}
 
 template<class stage> void AI_PV_ISMCTS_Group<stage>::selection(){
-  leaf_states.clear();
-  for(int i=0;i<group_size;i++) leaf_states.emplace_back(searchers[i].selection());
+  #pragma omp parallel for
+  for(int i=0;i<group_size;i++){
+    leaf_states[i] = searchers[i].selection();
+  }
 }
 
 template<class stage> void AI_PV_ISMCTS_Group<stage>::evaluation(){
   //入力を作成
   std::vector<float> batch_state_array(group_size*2*INPUT_C*stage::h*stage::w);
+  #pragma omp parallel for
   for(int i=0;i<group_size;i++){
     auto &[leaf_pos,leaf_index_P1,leaf_index_P2,leaf_board_P1,leaf_board_P2,leaf_deck_P1,leaf_deck_P2] = leaf_states[i];
     //盤面が終了していたら、networkは用いない
@@ -104,6 +113,7 @@ template<class stage> void AI_PV_ISMCTS_Group<stage>::simulate(){
   selection();
   
   evaluation();
+  #pragma omp parallel for
   for(int i=0;i<group_size;i++){
     auto [leaf_pos,leaf_index_P1,leaf_index_P2,leaf_board_P1,leaf_board_P2,leaf_deck_P1,leaf_deck_P2] = leaf_states[i];
 

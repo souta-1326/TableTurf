@@ -53,6 +53,9 @@ template<class stage> class AI_PV_ISMCTS : public Agent<stage>{
   //相手のデッキ 手札はわからない
   Deck deck_P2;
 
+  //ログ出力
+  bool logging;
+
   // valid actions
   // simulationごとに変わる手札によって、実際に合法な手は変わる
   // redraw用ノードを除いて全ノード共通なので、1次元vector
@@ -118,7 +121,8 @@ template<class stage> class AI_PV_ISMCTS : public Agent<stage>{
   (const std::optional<torch::jit::Module> &model,c10::Device device,c10::ScalarType dtype,
   int num_simulations,float diff_bonus,
   bool add_dirichlet_noise,float alpha,float eps,
-  float c_base=19652,float c_init=1.25
+  float c_base=19652,float c_init=1.25,
+  bool logging=false
   );
   bool redraw(const Deck &deck) override;
   Choice<stage> get_action(const Board<stage> &board_P1,const Board<stage> &board_P2,const Deck &deck) override;
@@ -137,12 +141,14 @@ template<class stage> AI_PV_ISMCTS<stage>::AI_PV_ISMCTS
 (const std::optional<torch::jit::Module> &model,c10::Device device,c10::ScalarType dtype,
 int num_simulations,float diff_bonus,
 bool add_dirichlet_noise,float alpha,float eps,
-float c_base,float c_init
+float c_base,float c_init,
+bool logging
 ):
 c_base(c_base),c_init(c_init),
 add_dirichlet_noise(add_dirichlet_noise),alpha(alpha),eps(eps),
 num_simulations(num_simulations),diff_bonus(diff_bonus),
 model(model),device(device),dtype(dtype),
+logging(logging),
 valid_actions_start_index_P1(N_card+1,std::vector<int>(2,-1)),valid_actions_start_index_P2(N_card+1,std::vector<int>(2,-1)),
 P_card_index_P1(N_card+1),P_card_index_P2(N_card+1){
   //rootとexpansionによって最終的にnum_simulations+1の長さになるので、その分メモリを確保する
@@ -228,7 +234,9 @@ template<class stage> std::tuple<int,int,int,Board<stage>,Board<stage>,Deck,Deck
             if(!simulated_board_P1.is_valid_placement_without_SP_point_validation(is_placement_P1,valid_actions[now_index])) continue;
             
             //rootなら、Pにディリクレノイズを足す
-            float now_PUCB_score = PUCB_score(W[now_index],N[now_index],n_parent,P[now_index]/sum_valid_policy+(add_dirichlet_noise && is_placement_P1 && now_pos == root_pos ? noises[now_index]:0));
+            bool add_dirichlet_noise_now = (add_dirichlet_noise && is_placement_P1 && now_pos == root_pos);
+            float current_P = (add_dirichlet_noise_now ? P[now_index]/sum_valid_policy*(1-eps)+noises[now_index]*eps:P[now_index]/sum_valid_policy);
+            float now_PUCB_score = PUCB_score(W[now_index],N[now_index],n_parent,current_P);
             if(max_PUCB_score < now_PUCB_score){
               max_PUCB_score = now_PUCB_score;
               chosen_index = now_index;
@@ -550,7 +558,9 @@ template<class stage> Choice<stage> AI_PV_ISMCTS<stage>::get_best_action() const
       chosen_action_pos = i;
     }
   }
-  std::cerr << max_N << " " << valid_actions_P1[chosen_action_pos].card_id << " " << W_P1[root_pos][chosen_action_pos]/N_P1[root_pos][chosen_action_pos] << std::endl;
+  if(logging){
+    std::cerr << max_N << " " << valid_actions_P1[chosen_action_pos].card_id << " " << W_P1[root_pos][chosen_action_pos]/N_P1[root_pos][chosen_action_pos] << std::endl;
+  }
   return valid_actions_P1[chosen_action_pos];
 }
 
@@ -561,8 +571,10 @@ template<class stage> std::vector<float> AI_PV_ISMCTS<stage>::get_policy_redraw(
   std::vector<float> policy_redraw(2);
   for(int i=0;i<2;i++) policy_redraw[i] = float(N_P1[root_pos][i])/N_root;
 
-  for(float policy:policy_redraw) std::cerr << policy << " ";
-  std::cerr << std::endl;
+  if(logging){
+    for(float policy:policy_redraw) std::cerr << policy << " ";
+    std::cerr << std::endl;
+  }
   return policy_redraw;
 }
 template<class stage> std::vector<std::pair<Choice<stage>,float>> AI_PV_ISMCTS<stage>::get_policy_action() const {
@@ -581,8 +593,10 @@ template<class stage> std::vector<std::pair<Choice<stage>,float>> AI_PV_ISMCTS<s
     }
   }
 
-  for(auto [choice,policy]:policy_action) std::cerr << choice.status_id << " " << policy << " ";
-  std::cerr << std::endl;
+  if(logging){
+    for(auto [choice,policy]:policy_action) std::cerr << choice.status_id << " " << policy << " ";
+    std::cerr << std::endl;
+  }
   return policy_action;
 }
 
