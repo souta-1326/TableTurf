@@ -1,4 +1,6 @@
 #pragma once
+#include <mutex>
+#include <random>
 #include "choice.hpp"
 #include "card.hpp"
 #include "board.hpp"
@@ -117,6 +119,21 @@ template<class T> std::vector<T> incorporate(const std::vector<T> &x,const std::
     ret.emplace_back(y[i]);
   }
   return ret;
+}
+
+//policyに比例してChoice<stage>を選択
+template<class stage> Choice<stage> propotional_choice(const std::vector<std::pair<Choice<stage>,float>> &policy_action){
+  static std::uniform_real_distribution<float> rnd(0.0,1.0);
+  static std::random_device seed_gen;
+  static std::default_random_engine engine(seed_gen());
+  while(true){
+    float rand = rnd(engine);
+    for(const auto &[choice,policy]:policy_action){
+      rand -= policy;
+      if(rand <= 0) return choice;
+    }
+    //誤差等でここに辿り着くことがあるので、その場合やり直す
+  }
 }
 
 //学習用出力(policy_action)の素を生成
