@@ -89,7 +89,7 @@ template<class stage> void AI_PV_ISMCTS_Group<stage>::evaluation(){
     //盤面が終了していたら、networkは用いない
     if(leaf_board_P1.current_turn > Board<stage>::TURN_MAX) continue;
 
-    int expanded_pos = searchers[i].W_P1.size();
+    int expanded_pos = searchers[i].get_tree_size();
     bool is_redraw_phase = searchers[i].is_redraw_node(expanded_pos);
     std::vector<float> state_array_P1 = construct_image_vector(leaf_board_P1,leaf_deck_P1,leaf_deck_P2,is_redraw_phase);
     std::copy(state_array_P1.begin(),state_array_P1.end(),batch_state_array.begin()+i*(2*INPUT_C*stage::h*stage::w));
@@ -125,7 +125,7 @@ template<class stage> void AI_PV_ISMCTS_Group<stage>::simulate(){
     //そうでなければ、expansionしつつnetworkのvalueを参照
     else{
       //redrawノードであればexpansion_redraw
-      int expanded_pos = searchers[i].W_P1.size();
+      int expanded_pos = searchers[i].get_tree_size();
       if(searchers[i].is_redraw_node(expanded_pos)) searchers[i].expansion_redraw(policy_redraw_tensor[i][0]);
       else searchers[i].expansion_action(leaf_pos,leaf_index_P1,leaf_index_P2,leaf_board_P1,policy_action_tensor[i][0],policy_action_tensor[i][1]);
 

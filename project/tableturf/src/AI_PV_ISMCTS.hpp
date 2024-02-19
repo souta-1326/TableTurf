@@ -124,6 +124,7 @@ template<class stage> class AI_PV_ISMCTS : public Agent<stage>{
   float c_base=19652,float c_init=1.25,
   bool logging=false
   );
+  int get_tree_size() const {return W_P1.size();}
   bool redraw(const Deck &deck) override;
   Choice<stage> get_action(const Board<stage> &board_P1,const Board<stage> &board_P2,const Deck &deck) override;
   //redraw後に呼び出し、policyを得る
@@ -150,15 +151,7 @@ num_simulations(num_simulations),diff_bonus(diff_bonus),
 model(model),device(device),dtype(dtype),
 logging(logging),
 valid_actions_start_index_P1(N_card+1,std::vector<int>(2,-1)),valid_actions_start_index_P2(N_card+1,std::vector<int>(2,-1)),
-P_card_index_P1(N_card+1),P_card_index_P2(N_card+1){
-  //rootとexpansionによって最終的にnum_simulations+1の長さになるので、その分メモリを確保する
-  P_P1.reserve(num_simulations);P_P2.reserve(num_simulations);
-  P_card_P1.reserve(num_simulations);P_card_P2.reserve(num_simulations);
-  W_P1.reserve(num_simulations);W_P2.reserve(num_simulations);
-  N_P1.reserve(num_simulations);N_P2.reserve(num_simulations);
-  parent_pos.reserve(num_simulations);
-  pos_map.reserve(num_simulations+1);//unordered_mapは処理系によっては1要素多く確保する必要があるらしいので、念の為
-}
+P_card_index_P1(N_card+1),P_card_index_P2(N_card+1){}
 
 template<class stage> float AI_PV_ISMCTS<stage>::PUCB_score(float w,int n,int n_parent,float p) const {
   return
@@ -177,7 +170,7 @@ template<class stage> std::tuple<int,int,int,Board<stage>,Board<stage>,Deck,Deck
   assert(simulated_deck_P2.get_current_turn() == std::max(1,root_current_turn));
 
   int now_pos = root_pos;
-  if(W_P1.size() == now_pos){
+  if(get_tree_size() == now_pos){
     //探索1回目　すぐ返す (そもそも葉が存在しないのでleaf_pos=-1)
     return {-1,-1,-1,simulated_board_P1,simulated_board_P2,simulated_deck_P1,simulated_deck_P2};
   }
@@ -211,6 +204,11 @@ template<class stage> std::tuple<int,int,int,Board<stage>,Board<stage>,Deck,Deck
         }
       }
       else{
+        //初めて訪れた場合は、WとNを初期化
+        if(W.size() == 0){
+          W.resize(valid_actions.size());
+          N.resize(valid_actions.size());
+        }
         //Policyを対象の(card,is_SP_attack)に限定する
         //sum_valid_policyで各policyで割った値を真のpolicyとする
         float sum_valid_policy = 0;
@@ -274,16 +272,20 @@ template<class stage> bool AI_PV_ISMCTS<stage>::is_redraw_node(int pos) const {
 }
 template<class stage> void AI_PV_ISMCTS<stage>::expansion_action(const int leaf_pos,const int leaf_index_P1,const int leaf_index_P2,const Board<stage> &leaf_board_P1,const torch::Tensor &policy_tensor_P1,const torch::Tensor &policy_tensor_P2){
   //展開
-  int now_pos = W_P1.size();
+  int now_pos = get_tree_size();
   pos_map[{leaf_pos,leaf_index_P1,leaf_index_P2}] = now_pos;
   P_P1.emplace_back(std::vector<float>(valid_actions_P1.size()));
   P_card_P1.emplace_back(std::vector<std::vector<float>>(Deck::N_CARD_IN_DECK,std::vector<float>(2)));
-  W_P1.emplace_back(std::vector<float>(valid_actions_P1.size()));
-  N_P1.emplace_back(std::vector<int>(valid_actions_P1.size()));
+  //W_P1.emplace_back(std::vector<float>(valid_actions_P1.size()));
+  W_P1.emplace_back(std::vector<float>());
+  //N_P1.emplace_back(std::vector<int>(valid_actions_P1.size()));
+  N_P1.emplace_back(std::vector<int>());
   P_P2.emplace_back(std::vector<float>(valid_actions_P2.size()));
   P_card_P2.emplace_back(std::vector<std::vector<float>>(Deck::N_CARD_IN_DECK,std::vector<float>(2)));
-  W_P2.emplace_back(std::vector<float>(valid_actions_P2.size()));
-  N_P2.emplace_back(std::vector<int>(valid_actions_P2.size()));
+  //W_P2.emplace_back(std::vector<float>(valid_actions_P2.size()));
+  W_P2.emplace_back(std::vector<float>());
+  //N_P2.emplace_back(std::vector<int>(valid_actions_P2.size()));
+  N_P2.emplace_back(std::vector<int>());
   parent_pos.emplace_back(leaf_pos,leaf_index_P1,leaf_index_P2);
 
   //policy_tensorをP,P_cardに反映させる
@@ -317,7 +319,7 @@ template<class stage> void AI_PV_ISMCTS<stage>::expansion_action(const int leaf_
 }
 template<class stage> void AI_PV_ISMCTS<stage>::expansion_redraw(const torch::Tensor &policy_tensor_P1){
   //展開(というか最初のノード)
-  int now_pos = P_P1.size();
+  int now_pos = get_tree_size();
   assert(now_pos == 0);
   P_P1.emplace_back(std::vector<float>(2));
   P_card_P1.emplace_back(std::vector<std::vector<float>>());//使わない
@@ -399,7 +401,7 @@ template<class stage> void AI_PV_ISMCTS<stage>::simulate(){
   }
   //そうでなければ、expansionしつつnetworkのvalueを参照
   else{
-    int expanded_pos = W_P1.size();
+    int expanded_pos = get_tree_size();
 
     //policy_action_tensor,policy_redraw_tensor,value_tensorを取得
     evaluation(leaf_board_P1,leaf_board_P2,leaf_deck_P1,leaf_deck_P2,is_redraw_node(expanded_pos));
@@ -435,7 +437,15 @@ template<class stage> void AI_PV_ISMCTS<stage>::set_root(const Board<stage> &boa
   //ターン1で、redrawをしなかったなら、posを変更して引き継ぐ
   if(!did_redraw_deck && root_current_turn == 1){
     assert((pos_map[{root_pos,0,0}] == 1));
-    root_pos = pos_map[{root_pos,0,0}];return;
+    root_pos = pos_map[{root_pos,0,0}];
+    //expansionによってさらにnum_simulations*2+1の長さになるので、その分メモリを確保する
+    P_P1.reserve(num_simulations*2);P_P2.reserve(num_simulations*2);
+    P_card_P1.reserve(num_simulations*2);P_card_P2.reserve(num_simulations*2);
+    W_P1.reserve(num_simulations*2);W_P2.reserve(num_simulations*2);
+    N_P1.reserve(num_simulations*2);N_P2.reserve(num_simulations*2);
+    parent_pos.reserve(num_simulations*2);
+    pos_map.reserve(num_simulations*2+1);//unordered_mapは処理系によっては1要素多く確保する必要があるらしいので、念の為
+    return;
   }
   //そうでない場合、root_posは常に0
   //木をリセット
@@ -445,6 +455,14 @@ template<class stage> void AI_PV_ISMCTS<stage>::set_root(const Board<stage> &boa
   W_P1.clear();W_P2.clear();
   N_P1.clear();N_P2.clear();
   parent_pos.clear();pos_map.clear();
+
+  //rootとexpansionによって最終的にnum_simulations+1の長さになるので、その分メモリを確保する
+  P_P1.reserve(num_simulations);P_P2.reserve(num_simulations);
+  P_card_P1.reserve(num_simulations);P_card_P2.reserve(num_simulations);
+  W_P1.reserve(num_simulations);W_P2.reserve(num_simulations);
+  N_P1.reserve(num_simulations);N_P2.reserve(num_simulations);
+  parent_pos.reserve(num_simulations);
+  pos_map.reserve(num_simulations+1);//unordered_mapは処理系によっては1要素多く確保する必要があるらしいので、念の為
 }
 
 template<class stage> void AI_PV_ISMCTS<stage>::set_deck_P1(const Deck &deck_P1){
