@@ -21,7 +21,8 @@ def load_model():
   model.load_state_dict(torch.load(model_path,map_location=device))
   return model
 
-def create_model_cpp(model:nn.Module):
+def create_model_cpp():
+  model = load_model()
   model_cpp = network.AlphaZeroResNet_CPP(model).to(device)
   dummy_input = torch.rand(2,network.INPUT_C,H,W).to(device)
   traced_model_cpp = torch.jit.trace(model_cpp,dummy_input)
