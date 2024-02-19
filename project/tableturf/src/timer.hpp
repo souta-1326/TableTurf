@@ -11,7 +11,7 @@ struct Timer{
   int gpu_id;
   double get_time(){
     #if __has_include(<torch/mps.h>)
-    if(device == torch::kMPS) torch::mps::synchronize();
+    if(device.is_mps()) torch::mps::synchronize();
     else torch::cuda::synchronize(gpu_id);
     #else
     torch::cuda::synchronize(gpu_id);
