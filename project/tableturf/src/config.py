@@ -24,12 +24,13 @@ PV_ISMCTS_num_simulations = 800
 simple_ISMCTS_num_simulations = 5000
 dirichlet_alpha = 0.15
 eps = 0.25
+diff_bonus = 0.001
 
-n_episodes = 320*30
-update_period = 320
-test_period = 320
+num_games_overall = 320*30
+num_games_in_selfplay = 320
 num_games_in_parallel = 32
-save_period = 1600
+num_games_in_testplay = 32
+num_games_between_save = 320*10
 buffer_size = 500000
 
 learning_batch_size = 128
@@ -43,5 +44,5 @@ def get_learning_rate(step_count:int):
     else:
       break
   assert learning_rate != -1
-  print(f"current learning rate: {learning_rate}")
+  print(f"learning rate: {learning_rate}")
   return learning_rate
