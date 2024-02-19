@@ -2,6 +2,7 @@
 #include <iostream>
 #include <algorithm>
 #include <torch/script.h>
+#include <omp.h>
 #include "board.hpp"
 #include "stage.hpp"
 #include "deck.hpp"
@@ -11,7 +12,7 @@
 #include "AI_PV_ISMCTS_group.hpp"
 #include "print_board_log.hpp"
 template<class stage> float testplay(
- int num_games,
+ int num_games,int num_threads,
  const torch::jit::script::Module &model,c10::Device device,c10::ScalarType dtype,
  int PV_ISMCTS_num_simulations,int simple_ISMCTS_num_simulations,float diff_bonus,
  std::vector<Deck> deck_P1s,std::vector<Deck> deck_P2s,
@@ -19,9 +20,11 @@ template<class stage> float testplay(
  ){
   assert(deck_P1s.size() == num_games && deck_P2s.size() == num_games);
 
-  AI_PV_ISMCTS_Group<stage> agent_P1s(num_games,model,device,dtype,PV_ISMCTS_num_simulations,diff_bonus,false,0,0);
+  omp_set_num_threads(num_threads);
 
-  std::vector<AI_ISMCTS<stage>> agent_P2s(num_games,AI_ISMCTS<stage>(simple_ISMCTS_num_simulations,diff_bonus));
+  AI_PV_ISMCTS_Group<stage> agent_P1s(num_games,model,device,dtype,PV_ISMCTS_num_simulations,diff_bonus,false,0,0,logging);
+
+  std::vector<AI_ISMCTS<stage>> agent_P2s(num_games,AI_ISMCTS<stage>(simple_ISMCTS_num_simulations,diff_bonus,false,logging));
 
   std::vector<Board<stage>> board_P1s(num_games),board_P2s(num_games);
 
@@ -45,6 +48,7 @@ template<class stage> float testplay(
     if(do_redraw_deck_P1s[i]) deck_P1s[i].reset();
   }
 
+  #pragma omp parallel for
   for(int i=0;i<num_games;i++){
     if(agent_P2s[i].redraw(deck_P2s[i])) deck_P2s[i].reset();
   }
@@ -55,6 +59,7 @@ template<class stage> float testplay(
   for(int current_turn = 1;current_turn <= Board<stage>::TURN_MAX;current_turn++){
     std::vector<Choice<stage>> choice_P1s = agent_P1s.get_actions(board_P1s,board_P2s,deck_P1s);
     std::vector<Choice<stage>> choice_P2s(num_games,{-1,-1,false});
+    #pragma omp parallel for
     for(int i=0;i<num_games;i++){
       choice_P2s[i] = agent_P2s[i].get_action(board_P2s[i],board_P1s[i],deck_P2s[i]);
     }
