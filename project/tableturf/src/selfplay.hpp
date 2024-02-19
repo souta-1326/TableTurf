@@ -11,8 +11,9 @@
 #include "common.hpp"
 #include "AI_PV_ISMCTS_group.hpp"
 #include "print_board_log.hpp"
-template<class stage> void selfplay(
- int num_games,
+//diff_bonusを加味したP1のfinal_valueの平均を返す
+template<class stage> float selfplay(
+ int num_games,int num_threads,
  const torch::jit::script::Module &model,c10::Device device,c10::ScalarType dtype,
  int num_simulations,float dirichlet_alpha,float eps,float diff_bonus,
  std::vector<Deck> deck_P1s,std::vector<Deck> deck_P2s,
@@ -21,11 +22,14 @@ template<class stage> void selfplay(
  ){
   assert(deck_P1s.size() == num_games && deck_P2s.size() == num_games);
 
+  omp_set_num_threads(num_threads);
+
   const int group_size = num_games*2;//1ゲーム2つ
+  constexpr int PROPOTIONAL_SELECTED_TURN = 3;
   
   std::vector<std::vector<Sample<stage>>> records(group_size);
   AI_PV_ISMCTS_Group<stage>
-  agents(group_size,model,device,dtype,num_simulations,diff_bonus,true,dirichlet_alpha,eps);
+  agents(group_size,model,device,dtype,num_simulations,diff_bonus,true,dirichlet_alpha,eps,logging);
 
   std::vector<Board<stage>> board_P1s(num_games),board_P2s(num_games);
 
@@ -61,6 +65,14 @@ template<class stage> void selfplay(
     agents.get_actions(incorporate(board_P1s,board_P2s),incorporate(board_P2s,board_P1s),incorporate(deck_P1s,deck_P2s));
     std::vector<std::vector<std::pair<Choice<stage>,float>>> policy_actions = agents.get_policy_actions();
     std::vector<std::vector<std::pair<Choice<stage>,float>>> policy_actions_network = agents.get_policy_actions_network();
+
+    //最初の3ターンは、policy_actionに比例した確率で選択する
+    if(current_turn <= PROPOTIONAL_SELECTED_TURN){
+      for(int i=0;i<group_size;i++){
+        choices[i] = propotional_choice(policy_actions[i]);
+      }
+    }
+
     for(int i=0;i<num_games;i++){
       //recordsを更新
       records[i*2].push_back({board_P1s[i],false,deck_P1s[i],deck_P2s[i],std::vector<float>(),construct_policy_action_for_learning(policy_actions[i*2],policy_actions_network[i*2],deck_P1s[i]),0.0F});
@@ -84,8 +96,10 @@ template<class stage> void selfplay(
   }
 
   //勝敗判定して、sampleにvalueを代入
+  float sum_value_P1 = 0;
   for(int i=0;i<num_games;i++){
     float value_P1 = board_P1s[i].get_final_value(diff_bonus);
+    sum_value_P1 += value_P1;
     for(Sample<stage> &sample:records[i*2]){
       sample.value = value_P1;
     }
@@ -102,4 +116,6 @@ template<class stage> void selfplay(
     }
   }
   buffer_mutex.unlock();
+
+  return sum_value_P1/num_games;
 }
