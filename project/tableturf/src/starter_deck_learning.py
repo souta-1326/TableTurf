@@ -17,13 +17,7 @@ import torch.multiprocessing as mp
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 
-from env import environment
-if environment == "mac":
-  from config_local import*
-elif environment == "colab":
-  from config_colab import*
-elif environment == "abci":
-  from config import*
+from config import*
 
 def train_mps(learning_rate,do_save_model:bool):
   model = load_model()
