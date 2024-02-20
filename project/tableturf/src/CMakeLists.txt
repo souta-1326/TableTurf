@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
 #project(test-app)
 project(starter_deck_selfplay)
 
-#list(APPEND CMAKE_PREFIX_PATH /usr/local/lib/python3.8/dist-packages/torch/share/cmake) #libtorchのパスを入力
+list(APPEND CMAKE_PREFIX_PATH /usr/local/lib/python3.8/dist-packages/torch/share/cmake) #libtorchのパスを入力
 list(APPEND CMAKE_PREFIX_PATH /Users/souta/Documents/libtorch)
 find_package(Torch REQUIRED)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
