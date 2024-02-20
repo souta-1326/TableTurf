@@ -56,7 +56,7 @@ def train_mps(learning_rate,do_save_model:bool):
           print(f"loss_policy_redraw:{loss_policy_redraw:.3f}")
           print(f"loss_value:{loss_value:.3f}")
   
-
+  save_model(model,model_path)
   # model の履歴を残す
   if do_save_model:
     save_model_path = f"model/model_{str(datetime.datetime.today()).replace(' ','_')}.pt"
@@ -157,7 +157,7 @@ def main():
     # update network
     start_learn_time = time.time()
     if device=="cuda":
-      mp.spawn(train_DDP,args=(learning_rate,do_save_model))
+      mp.spawn(train_DDP,args=(learning_rate,do_save_model),nprocs=num_gpus,join=True)
     else:
       train_mps(learning_rate,do_save_model)
     end_learn_time = time.time()
