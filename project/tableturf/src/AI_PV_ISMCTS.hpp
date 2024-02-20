@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <numeric>
 #include <functional>
+#include <cmath>
 #include <torch/script.h>
 #include <torch/nn/functional/activation.h>
 #include <optional>
@@ -218,6 +219,7 @@ template<class stage> std::tuple<int,int,int,Board<stage>,Board<stage>,Deck,Deck
             sum_valid_policy += P_card[P_card_index[card_id]][true];
           }
         }
+        if(sum_valid_policy == 0) sum_valid_policy += 1e-5;
 
         for(int card_id:card_id_in_hand)
         for(bool is_SP_attack:{false,true}){
@@ -431,7 +433,7 @@ template<class stage> void AI_PV_ISMCTS<stage>::set_root(const Board<stage> &boa
 
   //rootのP1だけには、Pにディリクレノイズを載せる
   if(root_current_turn > 0 && add_dirichlet_noise){
-    noises = dirichlet_noise(alpha,P_P1[root_pos].size());
+    noises = dirichlet_noise(alpha,valid_actions_P1.size());
   }
 
   //ターン1で、redrawをしなかったなら、posを変更して引き継ぐ
