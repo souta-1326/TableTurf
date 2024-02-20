@@ -44,7 +44,7 @@ c10::Device device,c10::ScalarType dtype){
     assert(num_games_in_testplay%num_games_in_parallel == 0);
     float sum_win_rate = 0;
     for(int i=0;i<num_testplay_func;i++){
-      sum_win_rate += testplay<stage>(num_games_in_testplay,num_threads_each_gpu,model,device,dtype,PV_ISMCTS_num_simulations,simple_ISMCTS_num_simulations,0,std::vector<Deck>(num_games_in_testplay),std::vector<Deck>(num_games_in_testplay));
+      sum_win_rate += testplay<stage>(num_games_in_parallel,num_threads_each_gpu,model,device,dtype,PV_ISMCTS_num_simulations,simple_ISMCTS_num_simulations,0,std::vector<Deck>(num_games_in_parallel),std::vector<Deck>(num_games_in_parallel));
     }
     float win_rate = sum_win_rate/num_testplay_func;
     o_mutex.lock();
