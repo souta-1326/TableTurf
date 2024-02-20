@@ -305,17 +305,9 @@ template<class stage> void AI_PV_ISMCTS<stage>::expansion_action(const int leaf_
     for(bool is_SP_attack:{false,true}){
       if(is_SP_attack && !leaf_board_P1.is_enough_SP_point(is_placement_P1,card_id)) continue;
       for(int status_id=(is_SP_attack ? 0:-1);status_id<stage::card_status_size[card_id];status_id++){
-        std::cerr << card_id << " " << status_id << " " << is_SP_attack << std::endl;
         if(!leaf_board_P1.is_valid_placement_without_SP_point_validation(is_placement_P1,{card_id,status_id,is_SP_attack})) continue;
         int P_network_index = choice_to_policy_action_network_index<stage>({card_id,status_id,is_SP_attack});
         int P_index = choice_to_valid_actions_index(is_placement_P1,{card_id,status_id,is_SP_attack});
-        std::cerr << P_index << " " << P_network_index << std::endl;
-        std::cerr << P.size() << " " << P_network.size() << " " << ACTION_SPACE_OF_EACH_CARD<stage>*N_card << std::endl;
-        std::cerr << P[P_index] << std::endl;
-        std::cerr << P_network[P_network_index] << std::endl;
-        std::cerr << P_card_index[card_id] << std::endl;
-        std::cerr << P_card[P_card_index[card_id]][is_SP_attack] << std::endl;
-        assert(P_index < P.size());
 
         //代入
         P[P_index] = P_network[P_network_index];
