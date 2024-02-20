@@ -34,7 +34,7 @@ def create_new_files():
   # model_pathが存在しないなら、新たにmodelを用意
   if not glob.glob(model_path):
     model = network.AlphaZeroResNet(H,W,n_blocks).to(device)
-    save_model(model,model_path,None)
+    save_model(model,model_path)
   
   # data_pathが存在しないなら、新たに用意
   if not glob.glob(data_path):
