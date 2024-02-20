@@ -53,8 +53,12 @@ c10::Device device,c10::ScalarType dtype){
     o_mutex.unlock();
   }
   //selfplay
-  static int num_games_in_selfplay_done = 0;
+  static int num_games_in_selfplay_run = 0;//走っているor終わっている
+  static int num_games_in_selfplay_done = 0;//終わっている
   static std::mutex selfplay_count_mutex;
+  selfplay_count_mutex.lock();
+  num_games_in_selfplay_run += num_games_in_parallel;
+  selfplay_count_mutex.unlock();
   while(true){
     selfplay<stage>(num_games_in_parallel,num_threads_each_gpu,model,device,dtype,PV_ISMCTS_num_simulations,dirichlet_alpha,eps,diff_bonus,std::vector<Deck>(num_games_in_parallel),std::vector<Deck>(num_games_in_parallel),buffer);
     bool break_loop = false;
@@ -63,7 +67,8 @@ c10::Device device,c10::ScalarType dtype){
     o_mutex.lock();
     std::cerr << "Selfplay loop:" << num_games_in_selfplay_done << std::endl;
     o_mutex.unlock();
-    if(num_games_in_selfplay_done >= num_games_in_selfplay) break_loop = true;
+    if(num_games_in_selfplay_run >= num_games_in_selfplay) break_loop = true;
+    else num_games_in_selfplay_run += num_games_in_parallel;
     selfplay_count_mutex.unlock();
     if(break_loop) break;
   }
@@ -97,7 +102,7 @@ int main(int argc,char *argv[]){
   std::ofstream log_out(log_path,std::ios::app);//上書き
   Buffer<stage> buffer(buffer_size);//学習用データ
   // load model
-  constexpr bool USE_TENSORRT = false;
+  constexpr bool USE_TENSORRT = true;
   #if __has_include(<torch_tensorrt/torch_tensorrt.h>)
   if(USE_TENSORRT) std::cout << "torch_tensorrt available" << std::endl;
   #endif
