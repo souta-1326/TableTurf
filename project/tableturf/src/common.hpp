@@ -126,8 +126,11 @@ template<class stage> Choice<stage> propotional_choice(const std::vector<std::pa
   static std::uniform_real_distribution<float> rnd(0.0,1.0);
   static std::random_device seed_gen;
   static std::default_random_engine engine(seed_gen());
+  static std::mutex engine_mutex;
   while(true){
+    engine_mutex.lock();
     float rand = rnd(engine);
+    engine_mutex.unlock();
     for(const auto &[choice,policy]:policy_action){
       rand -= policy;
       if(rand <= 0) return choice;
