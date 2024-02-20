@@ -60,6 +60,9 @@ c10::Device device,c10::ScalarType dtype){
     bool break_loop = false;
     selfplay_count_mutex.lock();
     num_games_in_selfplay_done += num_games_in_parallel;
+    o_mutex.lock();
+    std::cerr << "Selfplay loop:" << num_games_in_selfplay_done << std::endl;
+    o_mutex.unlock();
     if(num_games_in_selfplay_done >= num_games_in_selfplay) break_loop = true;
     selfplay_count_mutex.unlock();
     if(break_loop) break;
@@ -70,6 +73,7 @@ c10::Device device,c10::ScalarType dtype){
 }
 //ここでselfplayを回す
 int main(int argc,char *argv[]){
+  Initializer initializer;
   assert(argc == 16);
   int num_cpus = atoi(argv[1]);
   int num_gpus = atoi(argv[2]);

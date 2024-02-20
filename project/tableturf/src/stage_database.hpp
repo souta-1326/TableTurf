@@ -204,4 +204,4 @@ struct Initializer{
     Box_Seats::initialize(Box_Seats_exists_square,7,2,2,7);
   }
 };
-Initializer initializer;
+//Initializer initializer;
