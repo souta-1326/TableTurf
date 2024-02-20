@@ -1,8 +1,8 @@
 import os
 
-num_cpus = 20
-num_gpus = 4
-device = "cuda"
+num_cpus = 2
+num_gpus = 1
+device = "mps"
 
 n_blocks = 19
 
@@ -28,8 +28,8 @@ diff_bonus = 0.001
 
 num_games_overall = 320*30
 num_games_in_selfplay = 320
-num_games_in_parallel = 32
-num_games_in_testplay = 32
+num_games_in_parallel = 2
+num_games_in_testplay = 16
 num_games_between_save = 320*10
 buffer_size = 500000
 

@@ -1,7 +1,7 @@
 import os
 
-num_cpus = 20
-num_gpus = 4
+num_cpus = 2
+num_gpus = 1
 device = "cuda"
 
 n_blocks = 19
