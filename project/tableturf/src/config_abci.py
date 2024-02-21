@@ -20,7 +20,7 @@ starter_deck_selfplay_program = "build/starter_deck_selfplay"
 os.environ["MASTER_ADDR"] = "localhost"
 os.environ["MASTER_PORT"] = "50000"
 
-PV_ISMCTS_num_simulations = 800
+PV_ISMCTS_num_simulations = 100
 simple_ISMCTS_num_simulations = 5000
 dirichlet_alpha = 0.15
 eps = 0.25

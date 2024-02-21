@@ -1,4 +1,4 @@
-environment = "mac"
+environment = "abci"
 
 if environment == "mac":
   from config_local import*
