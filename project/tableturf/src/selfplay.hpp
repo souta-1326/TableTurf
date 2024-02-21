@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <mutex>
 #include <torch/script.h>
+#include <omp.h>
 #include "board.hpp"
 #include "stage.hpp"
 #include "deck.hpp"
