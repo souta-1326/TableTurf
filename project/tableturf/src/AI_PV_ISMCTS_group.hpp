@@ -4,7 +4,6 @@
 #include <unordered_map>
 #include <numeric>
 #include <functional>
-#include <omp.h>
 #include <torch/script.h>
 #include <torch/nn/functional/activation.h>
 #include "AI_PV_ISMCTS.hpp"
@@ -74,7 +73,6 @@ model(model),device(device),dtype(dtype),
 logging(logging){}
 
 template<class stage> void AI_PV_ISMCTS_Group<stage>::selection(){
-  #pragma omp parallel for
   for(int i=0;i<group_size;i++){
     leaf_states[i] = searchers[i].selection();
   }
@@ -83,7 +81,6 @@ template<class stage> void AI_PV_ISMCTS_Group<stage>::selection(){
 template<class stage> void AI_PV_ISMCTS_Group<stage>::evaluation(){
   //入力を作成
   std::vector<float> batch_state_array(group_size*2*INPUT_C*stage::h*stage::w);
-  #pragma omp parallel for
   for(int i=0;i<group_size;i++){
     auto &[leaf_pos,leaf_index_P1,leaf_index_P2,leaf_board_P1,leaf_board_P2,leaf_deck_P1,leaf_deck_P2] = leaf_states[i];
     //盤面が終了していたら、networkは用いない
@@ -111,9 +108,8 @@ template<class stage> void AI_PV_ISMCTS_Group<stage>::evaluation(){
 
 template<class stage> void AI_PV_ISMCTS_Group<stage>::simulate(){
   selection();
-  
+
   evaluation();
-  #pragma omp parallel for
   for(int i=0;i<group_size;i++){
     auto [leaf_pos,leaf_index_P1,leaf_index_P2,leaf_board_P1,leaf_board_P2,leaf_deck_P1,leaf_deck_P2] = leaf_states[i];
 
