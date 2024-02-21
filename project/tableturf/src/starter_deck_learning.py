@@ -82,7 +82,8 @@ def train_DDP(rank,learning_rate,do_save_model:bool):
   with open(dataset_path,"rb") as file:
     train_data = pickle.load(file)
   sampler = DistributedSampler(dataset=train_data,num_replicas=num_gpus,rank=rank,shuffle=True)
-  dataloader = DataLoader(train_data,batch_size=learning_batch_size,sampler=sampler,num_workers=2,pin_memory=True)
+  num_cpu_per_gpu = num_cpus//num_gpus
+  dataloader = DataLoader(train_data,batch_size=learning_batch_size,sampler=sampler,num_workers=num_cpu_per_gpu,pin_memory=True)
 
   scaler = torch.cuda.amp.GradScaler()
   for epoch_id in range(n_epochs):
@@ -138,8 +139,8 @@ def main():
     # testplay & selfplay
     command = f"{starter_deck_selfplay_program} {num_cpus} {num_gpus} {device} {num_games_in_parallel} {num_games_in_selfplay} {num_games_in_testplay} {buffer_size} {PV_ISMCTS_num_simulations} {simple_ISMCTS_num_simulations} {diff_bonus} {dirichlet_alpha} {eps} {model_cpp_path} {data_path} {log_path}"
     print(command)
-    # ret = subprocess.run(command,shell=True)
-    # assert ret.returncode == 0
+    ret = subprocess.run(command,shell=True)
+    assert ret.returncode == 0
 
     print("selfplay done")
 
