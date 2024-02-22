@@ -82,8 +82,7 @@ def train_DDP(rank,learning_rate,do_save_model:bool):
   with open(dataset_path,"rb") as file:
     train_data = pickle.load(file)
   sampler = DistributedSampler(dataset=train_data,num_replicas=num_gpus,rank=rank,shuffle=True)
-  num_cpu_per_gpu = num_cpus//num_gpus
-  dataloader = DataLoader(train_data,batch_size=learning_batch_size,sampler=sampler,num_workers=num_cpu_per_gpu,pin_memory=True)
+  dataloader = DataLoader(train_data,batch_size=learning_batch_size,sampler=sampler,num_workers=0,pin_memory=True)
 
   scaler = torch.cuda.amp.GradScaler()
   for epoch_id in range(n_epochs):
@@ -165,7 +164,7 @@ def main():
       torch.mps.synchronize()
     end_learn_time = time.time()
 
-    step_count += n_epochs*math.ceil(len(train_data))
+    step_count += n_epochs*math.ceil(len(train_data)/learning_batch_size)
     with open(step_count_path,"wb") as file:
       pickle.dump(step_count,file)
     with open(log_path,"a") as log_f:
