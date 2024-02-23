@@ -6,7 +6,11 @@ import subprocess
 from network import network
 from network.common import*
 from network import datasets
+import datetime
 import pickle
+
+def generate_model_path() -> str:
+  return f"model/model_{str(datetime.datetime.today()).replace(' ','_')}.pt"
 
 def save_model(model:nn.Module,save_model_path):
   model.eval()
@@ -16,13 +20,13 @@ def save_model(model:nn.Module,save_model_path):
   if save_drive_dir_path != None:
     torch.save(model.state_dict(),save_drive_dir_path+save_model_path)
 
-def load_model():
+def load_model(load_model_path:str):
   model = network.AlphaZeroResNet(H,W,n_blocks=n_blocks).to(device)
-  model.load_state_dict(torch.load(model_path,map_location=device))
+  model.load_state_dict(torch.load(load_model_path,map_location=device))
   return model
 
-def create_model_cpp():
-  model = load_model()
+def create_model_cpp(load_model_path:str):
+  model = load_model(load_model_path)
   model_cpp = network.AlphaZeroResNet_CPP(model).to(device)
   dummy_input = torch.rand(2,network.INPUT_C,H,W).to(device)
   traced_model_cpp = torch.jit.trace(model_cpp,dummy_input)
@@ -31,7 +35,7 @@ def create_model_cpp():
 def create_new_files():
   #フォルダ作成
   subprocess.run("mkdir model data log",shell=True)
-  # model_pathが存在しないなら、新たにmodelを用意
+  model_path = generate_model_path()
   if not glob.glob(model_path):
     model = network.AlphaZeroResNet(H,W,n_blocks).to(device)
     save_model(model,model_path)

@@ -6,7 +6,6 @@ device = "mps"
 
 n_blocks = 19
 
-model_path = "model/model.pt" #これは不変、定期的にsave_model_pathを作り保存する
 model_cpp_path = "model/model_cpp.pt"
 save_drive_dir_path = None #末尾は'/'
 data_path = "data/selfplay_data.txt"
@@ -30,7 +29,6 @@ num_games_overall = 320*30
 num_games_in_selfplay = 320
 num_games_in_parallel = 2
 num_games_in_testplay = 16
-num_games_between_save = 320*10
 buffer_size = 500000
 
 learning_batch_size = 128
