@@ -1,8 +1,8 @@
 import torch
 from torch import nn,optim
 import time
-import datetime
 import subprocess
+import sys
 import math
 import pickle
 from tqdm import tqdm
@@ -19,8 +19,8 @@ from torch.utils.data.distributed import DistributedSampler
 
 from config import*
 
-def train_mps(learning_rate):
-  model = load_model()
+def train_mps(load_model_path:str,save_model_path:str,learning_rate):
+  model = load_model(load_model_path)
   # define loss function and optimizer
   loss_fn_policy_action = nn.CrossEntropyLoss()
   loss_fn_policy_redraw = nn.CrossEntropyLoss()
@@ -56,13 +56,12 @@ def train_mps(learning_rate):
           print(f"loss_policy_redraw:{loss_policy_redraw:.3f}")
           print(f"loss_value:{loss_value:.3f}")
   
-  save_model_path = generate_model_path()
   save_model(model,save_model_path)
   
 
-def train_cuda(gpu_id:int,learning_rate:float):
+def train_cuda(load_model_path:str,save_model_path:str,gpu_id:int,learning_rate:float):
   # load model
-  model = load_model()
+  model = load_model(load_model_path).to(gpu_id)
   # define loss function and optimizer
   loss_fn_policy_action = nn.CrossEntropyLoss()
   loss_fn_policy_redraw = nn.CrossEntropyLoss()
@@ -78,10 +77,10 @@ def train_cuda(gpu_id:int,learning_rate:float):
   for _ in range(n_epochs):
     with tqdm(enumerate(dataloader),total=len(dataloader)) as pbar_loss:
       for i,(data,label_policy_action,label_policy_redraw,label_value) in pbar_loss:
-        data = data.to(device)
-        label_policy_action = label_policy_action.to(device)
-        label_policy_redraw = label_policy_redraw.to(device)
-        label_value = label_value.to(device)
+        data = data.to(gpu_id)
+        label_policy_action = label_policy_action.to(gpu_id)
+        label_policy_redraw = label_policy_redraw.to(gpu_id)
+        label_value = label_value.to(gpu_id)
         # initialize grad
         optimizer.zero_grad()
         with torch.autocast(device_type=device):
@@ -103,15 +102,14 @@ def train_cuda(gpu_id:int,learning_rate:float):
           print(f"loss_value:{loss_value:.3f}")
   
   # update current model
-  save_model_path = generate_model_path()
   save_model(model,save_model_path)
 
 # DistributedDataParallel
-def train_DDP(rank,learning_rate):
+def train_DDP(rank,load_model_path:str,save_model_path:str,learning_rate):
   # create default process group
   dist.init_process_group("nccl",rank=rank,world_size=num_gpus)
   # load model
-  model = load_model().to(rank)
+  model = load_model(load_model_path).to(rank)
   # construct DDP model
   model_DDP = DDP(model,device_ids=[rank])
   # define loss function and optimizer
@@ -123,7 +121,7 @@ def train_DDP(rank,learning_rate):
   with open(dataset_path,"rb") as file:
     train_data = pickle.load(file)
   sampler = DistributedSampler(dataset=train_data,num_replicas=num_gpus,rank=rank,shuffle=True)
-  dataloader = DataLoader(train_data,batch_size=learning_batch_size,sampler=sampler,num_workers=0,pin_memory=True)
+  dataloader = DataLoader(train_data,batch_size=learning_batch_size,sampler=sampler,num_workers=1,pin_memory=True)
 
   scaler = torch.cuda.amp.GradScaler()
   for epoch_id in range(n_epochs):
@@ -157,12 +155,11 @@ def train_DDP(rank,learning_rate):
   dist.barrier()
   # update current model
   if rank == 0:
-    save_model_path = generate_model_path()
     # model_DDP.moduleとしないとバグるらしい
     save_model(model_DDP.module,save_model_path)
 
-def main():
-  create_new_files()
+def main(current_model_path:str):
+  create_new_files(current_model_path)
   with open(dataset_path,"rb") as file:
     train_data = pickle.load(file)
   with open(step_count_path,"rb") as file:
@@ -171,7 +168,7 @@ def main():
   # training loop
   for i in range(num_games_overall//num_games_in_selfplay):
     # C++用のモデル(policyとvalueが一体化)を作成
-    create_model_cpp()
+    create_model_cpp(current_model_path)
 
     # testplay & selfplay を開始
     num_cpus_for_selfplay = num_cpus*(num_gpus-1)//num_gpus
@@ -190,14 +187,18 @@ def main():
       print("train_data is empty, so skip learning")
     else:
       start_learn_time = time.time()
+      save_model_path = generate_model_path()
       if device=="cuda":
-        #mp.spawn(train_DDP,args=(learning_rate),nprocs=num_gpus,join=True)
-        train_cuda(learning_rate)
+        # mp.spawn(train_DDP,args=(current_model_path,save_model_path,learning_rate),nprocs=num_gpus,join=True)
+        learning_gpu_id = num_gpus-1
+        train_cuda(current_model_path,save_model_path,learning_gpu_id,learning_rate)
         torch.cuda.synchronize()
       else:
-        train_mps(learning_rate)
+        train_mps(current_model_path,save_model_path,learning_rate)
         torch.mps.synchronize()
       end_learn_time = time.time()
+
+      current_model_path = save_model_path
       step_count += n_epochs*math.ceil(len(train_data)/learning_batch_size)
       with open(step_count_path,"wb") as file:
         pickle.dump(step_count,file)
@@ -216,4 +217,8 @@ def main():
 
   
 if __name__ == "__main__":
-  main()
+  args = sys.argv
+  current_model_path = generate_model_path()
+  if len(args) >= 2:
+    current_model_path = args[1]
+  main(current_model_path)

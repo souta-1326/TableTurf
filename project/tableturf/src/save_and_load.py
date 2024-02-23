@@ -32,10 +32,10 @@ def create_model_cpp(load_model_path:str):
   traced_model_cpp = torch.jit.trace(model_cpp,dummy_input)
   traced_model_cpp.save(model_cpp_path)
 
-def create_new_files():
+def create_new_files(model_path):
   #フォルダ作成
   subprocess.run("mkdir model data log",shell=True)
-  model_path = generate_model_path()
+  # model_pathが存在しないなら、新たに用意
   if not glob.glob(model_path):
     model = network.AlphaZeroResNet(H,W,n_blocks).to(device)
     save_model(model,model_path)
