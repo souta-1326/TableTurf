@@ -3,8 +3,13 @@
 #include <utility>
 #include <optional>
 #include "xorshift64.hpp"
+
+template<class Individual,class Feature1,class Feature2,class Fitness> class MAP_Elites_Parallel;
+
 template<class Individual,class Feature1,class Feature2,class Fitness>
 class MAP_Elites{
+  friend class MAP_Elites_Parallel<Individual,Feature1,Feature2,Fitness>;
+
   int N;//生成する個体の数
   int G;//最初にランダムに生成する個体の数
   int min_size,max_size;//セルの数をmin_sizeからmax_sizeまで、線形に変化させる
@@ -27,6 +32,7 @@ class MAP_Elites{
 
   void add(const std::tuple<Individual,Feature1,Feature2,Fitness> &individual_with_parameters);//個体をマップに加える(弾かれることもある)
   void remap();//MAPの境界の数と場所を調整
+  void process_evaluated_individual(const Individual &individual,const Feature1 feature1,const Feature2 feature2,const Fitness fitness);
  public:
   MAP_Elites
   (int N,int G,int min_size,int max_size,int remap_frequency,
@@ -97,6 +103,14 @@ template<class Individual,class Feature1,class Feature2,class Fitness> void MAP_
   for(const auto &individual_with_parameters : all_individuals) add(individual_with_parameters);
 }
 
+template<class Individual,class Feature1,class Feature2,class Fitness> void MAP_Elites<Individual,Feature1,Feature2,Fitness>::process_evaluated_individual(const Individual &individual,const Feature1 feature1,const Feature2 feature2,const Fitness fitness){
+  all_individuals.emplace_back(individual,feature1,feature2,fitness);
+  assert(all_individuals.size() <= N);
+
+  if(all_individuals.size() % remap_frequency == 1) remap();
+  else add({individual,feature1,feature2,fitness});
+}
+
 template<class Individual,class Feature1,class Feature2,class Fitness> Individual MAP_Elites<Individual,Feature1,Feature2,Fitness>::generate_new_individual() const {
   //G個体まではランダムに生成
   if(all_individuals.size() < G) return get_random_individual();
@@ -109,14 +123,10 @@ template<class Individual,class Feature1,class Feature2,class Fitness> Individua
   }
 }
 
+
 template<class Individual,class Feature1,class Feature2,class Fitness> void MAP_Elites<Individual,Feature1,Feature2,Fitness>::step(){
   Individual new_individual = generate_new_individual();
   auto [feature1,feature2,fitness] = get_features_and_fitness(new_individual);
 
-  all_individuals.emplace_back(new_individual,feature1,feature2,fitness);
-
-  assert(all_individuals.size() <= N);
-
-  if(all_individuals.size() % remap_frequency == 1) remap();
-  else add({new_individual,feature1,feature2,fitness});
+  process_evaluated_individual(new_individual,feature1,feature2,fitness);
 }
