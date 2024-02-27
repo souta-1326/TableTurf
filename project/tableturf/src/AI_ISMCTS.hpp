@@ -5,6 +5,7 @@
 #include "agent.hpp"
 #include "AI_random.hpp"
 #include "AI_greedy.hpp"
+#include "AI_greedy2.hpp"
 #include "board.hpp"
 #include "choice.hpp"
 #include "deck.hpp"
@@ -16,7 +17,7 @@ template<class stage> class AI_ISMCTS : public Agent<stage>{
   //MCTSの設定
   int num_simulations;
   float diff_bonus;//相手とのマス差にこれをかけた値が評価値に加算される
-  bool use_evaluation_greedy;
+  Choice<stage>(*evaluator)(const Board<stage>&,const Board<stage>&,const Deck&);//evaluation用のシンプルな関数
 
   //search_actionの入力の盤面
   Board<stage> root_board_P1,root_board_P2;
@@ -69,9 +70,7 @@ template<class stage> class AI_ISMCTS : public Agent<stage>{
   std::tuple<int,int,int,Board<stage>,Board<stage>,Deck,Deck> selection();
   
   //P1視点の評価値を返す
-  float evaluation_random(Board<stage> leaf_board_P1,Board<stage> leaf_board_P2,Deck leaf_deck_P1,Deck leaf_deck_P2) const;
-  float evaluation_greedy(Board<stage> leaf_board_P1,Board<stage> leaf_board_P2,Deck leaf_deck_P1,Deck leaf_deck_P2) const;
-  float evaluation(Board<stage> leaf_board_P1,Board<stage> leaf_board_P2,Deck leaf_deck_P1,Deck leaf_deck_P2) const;
+  float evaluation(Board<stage> leaf_board_P1,Board<stage> leaf_board_P2,Deck leaf_deck_P1,Deck leaf_deck_P2);
 
   void expansion(const int leaf_pos,const int leaf_index_P1,const int leaf_index_P2);
   void backup(const int leaf_pos,const int leaf_index_P1,const int leaf_index_P2,const float value_P1);
@@ -79,7 +78,7 @@ template<class stage> class AI_ISMCTS : public Agent<stage>{
   //simulate,evaluation,expansion,backupをする
   void simulate();
  public:
-  AI_ISMCTS(int num_simulations,float diff_bonus=0,bool use_evaluation_greedy=true,bool logging=false);
+  AI_ISMCTS(int num_simulations,float diff_bonus=0,Choice<stage>(*evaluator)(const Board<stage>&,const Board<stage>&,const Deck&)=get_action_greedy<stage>,bool logging=false);
   bool redraw(const Deck &deck) override;
   void set_deck_P1(const Deck &deck_P1) override;
   void set_deck_P2(const Deck &deck_P2) override;
@@ -87,8 +86,8 @@ template<class stage> class AI_ISMCTS : public Agent<stage>{
   
   void set_root(const Board<stage> &board_P1,const Board<stage> &board_P2,const Deck &deck);
 };
-template<class stage> AI_ISMCTS<stage>::AI_ISMCTS(int num_simulations,float diff_bonus,bool use_evaluation_greedy,bool logging):
-num_simulations(num_simulations),diff_bonus(diff_bonus),use_evaluation_greedy(use_evaluation_greedy),logging(logging),
+template<class stage> AI_ISMCTS<stage>::AI_ISMCTS(int num_simulations,float diff_bonus,Choice<stage>(*evaluator)(const Board<stage>&,const Board<stage>&,const Deck&),bool logging):
+num_simulations(num_simulations),diff_bonus(diff_bonus),evaluator(evaluator),logging(logging),
 valid_actions_start_index_P1(N_card+1,std::vector<int>(2,-1)),valid_actions_start_index_P2(N_card+1,std::vector<int>(2,-1)){
   //rootとexpansionによって最終的にnum_simulations+1の長さになるので、その分メモリを確保する
   W_P1.reserve(num_simulations+1);W_P2.reserve(num_simulations+1);
@@ -202,32 +201,17 @@ template<class stage> void AI_ISMCTS<stage>::expansion(const int leaf_pos,const 
   parent_pos.emplace_back(leaf_pos,leaf_index_P1,leaf_index_P2);
 }
 
-template<class stage> float AI_ISMCTS<stage>::evaluation_random(Board<stage> leaf_board_P1,Board<stage> leaf_board_P2,Deck leaf_deck_P1,Deck leaf_deck_P2) const {
-  AI_random<stage> agent;
-  while(leaf_board_P1.get_current_turn() <= 12){
-    Choice<stage> action_P1 = agent.get_action(leaf_board_P1,leaf_board_P2,leaf_deck_P1);
-    Choice<stage> action_P2 = agent.get_action(leaf_board_P2,leaf_board_P1,leaf_deck_P2);
-    leaf_board_P1.put_both_cards_without_validation(action_P1,action_P2.swap_player());
-    leaf_board_P2.put_both_cards_without_validation(action_P2,action_P1.swap_player());
-  }
-  int square_diff = leaf_board_P1.square_count_P1()-leaf_board_P1.square_count_P2();
-  return std::clamp(square_diff,-1,1)+square_diff*diff_bonus;
-}
-template<class stage> float AI_ISMCTS<stage>::evaluation_greedy(Board<stage> leaf_board_P1,Board<stage> leaf_board_P2,Deck leaf_deck_P1,Deck leaf_deck_P2) const {
-  AI_greedy<stage> agent;
-  while(leaf_board_P1.get_current_turn() <= 12){
-    Choice<stage> action_P1 = agent.get_action(leaf_board_P1,leaf_board_P2,leaf_deck_P1);
-    Choice<stage> action_P2 = agent.get_action(leaf_board_P2,leaf_board_P1,leaf_deck_P2);
-    leaf_board_P1.put_both_cards_without_validation(action_P1,action_P2.swap_player());
-    leaf_board_P2.put_both_cards_without_validation(action_P2,action_P1.swap_player());
-  }
-  int square_diff = leaf_board_P1.square_count_P1()-leaf_board_P1.square_count_P2();
-  return std::clamp(square_diff,-1,1)+square_diff*diff_bonus;
-}
-template<class stage> float AI_ISMCTS<stage>::evaluation(Board<stage> leaf_board_P1,Board<stage> leaf_board_P2,Deck leaf_deck_P1,Deck leaf_deck_P2) const {
+template<class stage> float AI_ISMCTS<stage>::evaluation(Board<stage> leaf_board_P1,Board<stage> leaf_board_P2,Deck leaf_deck_P1,Deck leaf_deck_P2){
   assert(leaf_board_P1.get_current_turn() == leaf_board_P2.get_current_turn() && leaf_board_P1.get_current_turn() == leaf_deck_P1.get_current_turn() && leaf_board_P1.get_current_turn() == leaf_deck_P2.get_current_turn());
-  return (use_evaluation_greedy ? 
-  evaluation_greedy(leaf_board_P1,leaf_board_P2,leaf_deck_P1,leaf_deck_P2):evaluation_random(leaf_board_P1,leaf_board_P2,leaf_deck_P1,leaf_deck_P2));
+
+  while(leaf_board_P1.get_current_turn() <= Board<stage>::TURN_MAX){
+    Choice<stage> action_P1 = evaluator(leaf_board_P1,leaf_board_P2,leaf_deck_P1);
+    Choice<stage> action_P2 = evaluator(leaf_board_P2,leaf_board_P1,leaf_deck_P2);
+    leaf_board_P1.put_both_cards_without_validation(action_P1,action_P2.swap_player());
+    leaf_board_P2.put_both_cards_without_validation(action_P2,action_P1.swap_player());
+  }
+  int square_diff = leaf_board_P1.square_count_P1()-leaf_board_P1.square_count_P2();
+  return std::clamp(square_diff,-1,1)+square_diff*diff_bonus;
 }
 
 template<class stage> void AI_ISMCTS<stage>::backup(const int leaf_pos,const int leaf_index_P1,const int leaf_index_P2,const float value_P1){

@@ -29,3 +29,8 @@ template<class stage> Choice<stage> AI_random<stage>::get_action(const Board<sta
   if(choice_index < choice_SP_off_size) return valid_choices[card_index][0][choice_index];
   else return valid_choices[card_index][1][choice_index-choice_SP_off_size];
 }
+
+template<class stage> Choice<stage> get_action_random(const Board<stage> &board_P1,const Board<stage> &board_P2,const Deck &deck){
+  static AI_random<stage> agent;
+  return agent.get_action(board_P1,board_P2,deck);
+}

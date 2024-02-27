@@ -70,6 +70,9 @@ public:
   //プレイヤーのマス数を求める
   int square_count_P1() const;
   int square_count_P2() const;
+  //SPポイント
+  int get_SP_point_P1() const {return SP_point_P1;}
+  int get_SP_point_P2() const {return SP_point_P2;}
   //結果判定
   float get_final_value(float diff_bonus) const;
   //コンソールに盤面を出力

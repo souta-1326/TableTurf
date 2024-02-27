@@ -49,3 +49,8 @@ template<class stage> Choice<stage> AI_greedy<stage>::get_action(const Board<sta
     return valid_choices[card_index][1][max_score_index];
   }
 }
+
+template<class stage> Choice<stage> get_action_greedy(const Board<stage> &board_P1,const Board<stage> &board_P2,const Deck &deck){
+  static AI_greedy<stage> agent;
+  return agent.get_action(board_P1,board_P2,deck);
+}
