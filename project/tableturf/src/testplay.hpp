@@ -24,7 +24,7 @@ template<class stage> float testplay(
 
   AI_PV_ISMCTS_Group<stage> agent_P1s(num_games,model,device,dtype,PV_ISMCTS_num_simulations,diff_bonus,false,0,0,logging);
 
-  std::vector<AI_ISMCTS<stage>> agent_P2s(num_games,AI_ISMCTS<stage>(simple_ISMCTS_num_simulations,diff_bonus,false,logging));
+  std::vector<AI_ISMCTS<stage>> agent_P2s(num_games,AI_ISMCTS<stage>(simple_ISMCTS_num_simulations,diff_bonus,get_action_greedy<stage>,logging));
 
   std::vector<Board<stage>> board_P1s(num_games),board_P2s(num_games);
 
