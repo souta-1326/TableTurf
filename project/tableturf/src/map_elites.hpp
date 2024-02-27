@@ -2,12 +2,16 @@
 #include <map>
 #include <utility>
 #include <optional>
+#include <fstream>
 #include "xorshift64.hpp"
+#include "deck.hpp"
 
 template<class Individual,class Feature1,class Feature2,class Fitness> class MAP_Elites_Parallel;
 
 template<class Individual,class Feature1,class Feature2,class Fitness>
 class MAP_Elites{
+  static_assert(std::is_same<Individual,Deck>::value);
+  
   friend class MAP_Elites_Parallel<Individual,Feature1,Feature2,Fitness>;
 
   int N;//生成する個体の数
@@ -42,6 +46,7 @@ class MAP_Elites{
     all_individuals.reserve(N);
   }
   void step();
+  void write_elites(const std::string file_name,const bool overwrite = false);//書き出し
   std::vector<std::vector<std::optional<std::pair<Individual,Fitness>>>> get_map(){return MAP;}
 };
 
@@ -129,4 +134,17 @@ template<class Individual,class Feature1,class Feature2,class Fitness> void MAP_
   auto [feature1,feature2,fitness] = get_features_and_fitness(new_individual);
 
   process_evaluated_individual(new_individual,feature1,feature2,fitness);
+}
+
+template<class Individual,class Feature1,class Feature2,class Fitness> void MAP_Elites<Individual,Feature1,Feature2,Fitness>::write_elites(const std::string file_name,const bool overwrite){
+  std::ofstream fout(file_name,(overwrite ? std::ios::out : std::ios::app));
+  for(int i=0;i<current_size;i++){
+    for(int j=0;j<current_size;j++){
+      if(MAP[i][j] == std::nullopt) continue;
+      fout << get<1>(MAP[i][j].value()) << ":";
+      for(int card_id:get<0>(MAP[i][j].value()).get_deck()) fout << card_id << " ";
+      fout << std::endl;
+    }
+  }
+  fout << std::endl;
 }

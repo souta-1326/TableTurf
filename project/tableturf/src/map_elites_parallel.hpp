@@ -33,11 +33,11 @@ class MAP_Elites_Parallel{
     map_elites.all_individuals.reserve(map_elites.N);
   }
   //MAP_Elitesをstep_count回進める
-  void steps(int step_count);
+  void steps(const int step_count,const int write_interval,const std::string file_name,const bool overwrite = false);
 };
 
 template<class Individual,class Feature1,class Feature2,class Fitness>
-void MAP_Elites_Parallel<Individual,Feature1,Feature2,Fitness>::steps(int step_count){
+void MAP_Elites_Parallel<Individual,Feature1,Feature2,Fitness>::steps(const int step_count,const int write_interval,const std::string file_name,const bool overwrite){
   int run_or_finish_step_count = 0;//評価中か評価が終わっている個体生成数
   int finish_step_count = 0;//評価が終わっている個体生成数
   //評価中のインスタンス
@@ -73,6 +73,7 @@ void MAP_Elites_Parallel<Individual,Feature1,Feature2,Fitness>::steps(int step_c
 
             //finish_step_countに加算し、is_runningをfalseにする
             finish_step_count++;
+            if(finish_step_count % write_interval == 0) map_elites.write_elites(file_name,overwrite);
             is_running[i][j] = false;
           }
         }
