@@ -30,7 +30,7 @@ template<class stage> std::tuple<Feature1,Feature2,Fitness> get_features_and_fit
   float feature2 = (float(sum_n_square_pow2)/Deck::N_CARD_IN_DECK)-feature1*feature1;
 
   //fitness 勝率
-  std::vector<Deck> deck_P1s(num_games_each_evaluation);
+  std::vector<Deck> deck_P1s(num_games_each_evaluation,deck);
   int opponent_deckset_size = test_deckset.size();
   assert(num_games_each_evaluation % opponent_deckset_size == 0);
   int num_games_each_opponent_deck = num_games_each_evaluation / opponent_deckset_size;
@@ -65,7 +65,7 @@ int main(int argc,char* argv[]){
   elites_file_name = argv[9];
 
   Initializer initializer;
-  omp_set_max_active_levels(3);
+  omp_set_nested(1);
   omp_set_num_threads(n_instances_each_proc);
   std::vector<std::vector<short>> is_available_instance(n_procs,std::vector<short>(n_instances_each_proc,true));
   is_available_instance[0][0] = false;
@@ -84,5 +84,8 @@ int main(int argc,char* argv[]){
   }
   MPI_Finalize();
 }
-//local:mpirun -np 2 build/test_map_elites 4 2 10000 100 100 2500 8 1000 data/elites.txt
-//ABCI:mpirun -np x build/test_map_elites 40 4 10000 100 100 2500 80 10000
+//local:mpirun -np 1 build/test_map_elites 8 2 10000 100 100 2500 80 10000 data/elites.txt
+//ABCI:mpirun -np 1 build/test_map_elites 20 5 10000 100 100 2500 80 5000 data/elites.txt
+//mpirun -np 1 build/test_map_elites 20 5 100 10 10 25 8 500 data/elites.txt
+//1:13:00
+//4:31:37
