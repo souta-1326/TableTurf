@@ -20,8 +20,8 @@ private:
   //現在のターン数
   int current_turn;
 public:
-  //デフォルトはスターターデッキ
-  Deck(const std::vector<int> &deck = std::vector<int>({6,13,22,28,40,34,45,52,55,56,159,137,141,103,92}));
+  //デフォルトはとりあえず値を埋める これをそのまま使ったらエラー
+  Deck(const std::vector<int> &deck = std::vector<int>(N_CARD_IN_DECK,-1));
   //used_cardsを設定
   Deck(const std::vector<int> &deck,const std::vector<int> &used_cards);
   Deck(const Deck &deck,const std::vector<int> &used_cards);
