@@ -123,7 +123,7 @@ template<class Individual,class Feature1,class Feature2,class Fitness> Individua
   else{
     while(true){
       int feature1_index = xorshift64()%current_size,feature2_index = xorshift64()%current_size;
-      if(MAP[feature1_index][feature2_index] != std::nullopt) return mutate(get<0>(MAP[feature1_index][feature2_index].value()));
+      if(MAP[feature1_index][feature2_index] != std::nullopt) return mutate(std::get<0>(MAP[feature1_index][feature2_index].value()));
     }
   }
 }
@@ -141,8 +141,8 @@ template<class Individual,class Feature1,class Feature2,class Fitness> void MAP_
   for(int i=0;i<current_size;i++){
     for(int j=0;j<current_size;j++){
       if(MAP[i][j] == std::nullopt) continue;
-      fout << get<1>(MAP[i][j].value()) << ":";
-      for(int card_id:get<0>(MAP[i][j].value()).get_deck()) fout << card_id << " ";
+      fout << std::get<1>(MAP[i][j].value()) << ":";
+      for(int card_id:std::get<0>(MAP[i][j].value()).get_deck()) fout << card_id << " ";
       fout << std::endl;
     }
   }
