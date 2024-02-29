@@ -41,7 +41,6 @@ template<class stage> std::tuple<Feature1,Feature2,Fitness> get_features_and_fit
   int num_threads = num_cpus_each_proc / n_instances_each_proc;
   float fitness = testplay2<stage>(num_games_each_evaluation,num_threads,ISMCTS_num_simulations,diff_bonus,deck_P1s,deck_P2s);
 
-  //今日はとりあえずここまで　デバッグはしてない
   return {feature1,feature2,fitness};
 }
 //argv - num_cpus_each_proc n_instances_each_proc N G min_size max_size remap_frequency 
@@ -56,20 +55,19 @@ int main(int argc,char* argv[]){
   n_instances_each_proc = atoi(argv[2]);
   N = atoi(argv[3]);
   G = atoi(argv[4]);
-  min_size = 2;
-  max_size = 20;
-  remap_frequency = atoi(argv[5]);
-  write_interval = atoi(argv[6]);
-  num_games_each_evaluation = atoi(argv[7]);
-  ISMCTS_num_simulations = atoi(argv[8]);
-  elites_file_name = argv[9];
+  min_size = atoi(argv[5]);
+  max_size = atoi(argv[6]);
+  remap_frequency = atoi(argv[7]);
+  write_interval = atoi(argv[8]);
+  num_games_each_evaluation = atoi(argv[9]);
+  ISMCTS_num_simulations = atoi(argv[10]);
+  elites_file_name = argv[11];
 
   Initializer initializer;
   omp_set_nested(1);
-  omp_set_num_threads(n_instances_each_proc);
   std::vector<std::vector<short>> is_available_instance(n_procs,std::vector<short>(n_instances_each_proc,true));
   is_available_instance[0][0] = false;
-  #pragma omp parallel
+  #pragma omp parallel num_threads(n_instances_each_proc)
   {
     int instance_id = omp_get_thread_num();
     if(rank == 0 && instance_id == 0){
@@ -85,7 +83,13 @@ int main(int argc,char* argv[]){
   MPI_Finalize();
 }
 //local:mpirun -np 1 build/test_map_elites 8 2 10000 100 100 2500 80 10000 data/elites.txt
-//ABCI:mpirun -np 1 build/test_map_elites 20 5 10000 100 100 2500 80 5000 data/elites.txt
-//mpirun -np 1 build/test_map_elites 20 5 100 10 10 25 8 500 data/elites.txt
+//ABCI:mpirun -np 1 build/test_map_elites 20 5 10000 100 2 20 100 2500 80 5000 data/elites.txt
+//mpirun -np 1 build/test_map_elites 20 5 500 10 10 25 8 500 data/elites.txt
 //1:13:00
 //4:31:37
+//mpirun -np 2 build/test_map_elites 40 10 500 10 2 5 25 500 80 5000 data/elites_interactive.txt
+//mpirun -np 10 build/test_map_elites 8 1 5000 50 2 20 100 2500 80 5000 data/elites_interactive.txt
+//2:31:00
+//mpirun -np 20 build/test_map_elites 4 1 5000 50 2 20 100 2500 80 5000 data/elites_interactive.txt
+//mpirun -np 5 build/test_map_elites 4 1 5000 50 2 20 100 2500 80 5000 data/elites_interactive.txt
+//mpirun -hostfile $SGE_JOB_HOSTLIST -np 10 build/test_map_elites 12 3 5000 50 2 20 100 2500 8 500 data/elites_interactive.txt

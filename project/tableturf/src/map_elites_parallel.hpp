@@ -65,6 +65,7 @@ void MAP_Elites_Parallel<Individual,Feature1,Feature2,Fitness>::steps(const int 
             Feature1 feature1 = receiver[0];
             Feature2 feature2 = receiver[1];
             Fitness fitness = receiver[2];
+            // std::cerr << "Recv:" << i << " " << j << ":";
             for(int card_id:evaluated_deck[i][j].get_deck()) std::cerr << card_id << " ";
             std::cerr << ":" << feature1 << " " << feature2 << " " << fitness << std::endl;
 
@@ -85,6 +86,9 @@ void MAP_Elites_Parallel<Individual,Feature1,Feature2,Fitness>::steps(const int 
             //デッキを送信
             std::vector<int> card_id_in_deck = evaluated_deck[i][j].get_deck();
             MPI_Send(&card_id_in_deck[0],Deck::N_CARD_IN_DECK,MPI_INT,i,j,MPI_COMM_WORLD);
+            // std::cerr << "Send:" << i << " " << j << ":";
+            // for(int card_id:card_id_in_deck) std::cerr << card_id << " ";
+            // std::cerr << std::endl;
 
             //run_or_finish_step_countに加算し、is_runningをtrueにする
             run_or_finish_step_count++;
@@ -100,7 +104,7 @@ void MAP_Elites_Parallel<Individual,Feature1,Feature2,Fitness>::steps(const int 
           }
           //結果が返ってきたときのためにIRecvを構える
           //デッキを送ったときはfeature2つとfitness,finisherのときは全部-333が返ってくる
-          MPI_Irecv(&receivers[i][j][0],3,MPI_FLOAT,i,n_instances_each_proc+j,MPI_COMM_WORLD,&requests[i][j]);
+          MPI_Irecv(&receivers[i][j][0],3,MPI_FLOAT,i,10000+(i*n_instances_each_proc+j),MPI_COMM_WORLD,&requests[i][j]);
         }
       }
     }
@@ -147,7 +151,7 @@ void MAP_Elites_Instance<Individual,Feature1,Feature2,Fitness>::steps(){
     //終了命令が来たら、終了報告をして抜ける
     if(card_id_in_deck[0] == MAP_Elites_Parallel<Individual,Feature1,Feature2,Fitness>::FINISHER_VALUE){
       std::fill(sender.begin(),sender.end(),MAP_Elites_Parallel<Individual,Feature1,Feature2,Fitness>::FINISHER_VALUE);
-      MPI_Send(&sender[0],3,MPI_FLOAT,master_rank,n_instances_each_proc+instance_id,MPI_COMM_WORLD);
+      MPI_Send(&sender[0],3,MPI_FLOAT,master_rank,10000+(rank*n_instances_each_proc+instance_id),MPI_COMM_WORLD);
       break;
     }
     //そうでない場合、featureとfitnessを評価する
@@ -156,7 +160,7 @@ void MAP_Elites_Instance<Individual,Feature1,Feature2,Fitness>::steps(){
       sender[0] = feature1;
       sender[1] = feature2;
       sender[2] = fitness;
-      MPI_Send(&sender[0],3,MPI_FLOAT,master_rank,n_instances_each_proc+instance_id,MPI_COMM_WORLD);
+      MPI_Send(&sender[0],3,MPI_FLOAT,master_rank,10000+(rank*n_instances_each_proc+instance_id),MPI_COMM_WORLD);
     }
   }
 }
