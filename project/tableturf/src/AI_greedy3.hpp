@@ -1,6 +1,5 @@
 #pragma once
 #include <utility>
-#include <climits>
 #include "agent.hpp"
 #include "board.hpp"
 #include "choice.hpp"
