@@ -1,10 +1,10 @@
-#Reference:Leanny,https://github.com/Leanny/splat3/blob/main/data/mush/600/MiniGameCardInfo.json
+#Reference:Leanny,https://github.com/Leanny/splat3/blob/main/data/mush/800/MiniGameCardInfo.json
 #TODO:MIT Licenseに対応した正しい著作者表示をする
 import requests,json
 from pprint import pprint
 MAX_H = 8
 MAX_W = 8
-URL = "https://raw.githubusercontent.com/Leanny/splat3/master/data/mush/600/MiniGameCardInfo.json"
+URL = "https://raw.githubusercontent.com/Leanny/splat3/master/data/mush/800/MiniGameCardInfo.json"
 text = requests.get(URL).text
 cards_data = json.loads(text)
 def data_format(data:dict):
