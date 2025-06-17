@@ -54,6 +54,8 @@ public:
   //SPポイントが足りているかの判断を行わない(高速化のため)
   constexpr bool is_valid_placement_without_SP_point_validation(const bool is_placement_P1,const int card_id,const int status_id,const bool is_SP_attack,const short detect_unnessesary_SP_attack=2) const noexcept;
   constexpr bool is_valid_placement_without_SP_point_validation(const bool is_placement_P1,const Choice<stage> choice,const short detect_unnessesary_SP_attack=2) const noexcept;
+  //カード1枚に対する合法手リスト [SPアタックか]
+  std::vector<std::vector<Choice<stage>>> get_valid_choices(const bool is_placement_P1,const int card_id,const bool include_pass = true) const;
   //デッキの手札に対する合法手リスト [手札のi枚目][SPアタックか]
   std::vector<std::vector<std::vector<Choice<stage>>>> get_valid_choices(const bool is_placement_P1,const Deck &deck,const bool include_pass = true) const;
   //両方のプレイヤーのカードを置く(合法チェックなし)
@@ -143,21 +145,27 @@ template<class stage> constexpr bool Board<stage>::is_valid_placement_without_SP
   return is_valid_placement_without_SP_point_validation(is_placement_P1,choice.card_id,choice.status_id,choice.is_SP_attack,detect_unnessesary_SP_attack);
 }
 
+template<class stage> std::vector<std::vector<Choice<stage>>> Board<stage>::get_valid_choices(const bool is_placement_P1,const int card_id,const bool include_pass) const {
+  std::vector<std::vector<Choice<stage>>> valid_choices(2);
+  for(bool is_SP_attack:{false,true}){
+    //SPポイントが不足していたら走査しない
+    //if(is_SP_attack && (is_placement_P1 ? SP_point_P1:SP_point_P2) < cards[card_id].SP_COST) continue;
+    if(is_SP_attack && !is_enough_SP_point(is_placement_P1,card_id)) continue;
+    for(int status_id=(include_pass ? -1:0);status_id<stage::card_status_size[card_id];status_id++){
+      if(is_valid_placement(is_placement_P1,card_id,status_id,is_SP_attack)){
+        valid_choices[is_SP_attack].emplace_back(card_id,status_id,is_SP_attack);
+      }
+    }
+  }
+  return valid_choices;
+}
+
 template<class stage> std::vector<std::vector<std::vector<Choice<stage>>>> Board<stage>::get_valid_choices(const bool is_placement_P1,const Deck &deck,const bool include_pass) const {
-  std::vector<std::vector<std::vector<Choice<stage>>>> valid_choices(4,std::vector<std::vector<Choice<stage>>>(2));
+  std::vector<std::vector<std::vector<Choice<stage>>>> valid_choices(4);
   std::vector<int> hand = deck.get_hand();
   for(int i=0;i<Deck::N_CARD_IN_HAND;i++){
     int card_id = hand[i];
-    for(bool is_SP_attack:{false,true}){
-      //SPポイントが不足していたら走査しない
-      //if(is_SP_attack && (is_placement_P1 ? SP_point_P1:SP_point_P2) < cards[card_id].SP_COST) continue;
-      if(is_SP_attack && !is_enough_SP_point(is_placement_P1,card_id)) continue;
-      for(int status_id=(include_pass ? -1:0);status_id<stage::card_status_size[card_id];status_id++){
-        if(is_valid_placement(is_placement_P1,card_id,status_id,is_SP_attack)){
-          valid_choices[i][is_SP_attack].emplace_back(card_id,status_id,is_SP_attack);
-        }
-      }
-    }
+    valid_choices[i] = get_valid_choices(is_placement_P1,card_id,include_pass);
   }
   return valid_choices;
 }

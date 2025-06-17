@@ -19,12 +19,14 @@ template<class stage> Choice<stage> AI_greedy2<stage>::get_action(const Board<st
   constexpr float SP_point_value[Board<stage>::TURN_MAX+1] = {12,11.5,10.8,10,9.3,8.5,7.8,7,6,5,4,3,0};
   float current_SP_point_value = SP_point_value[board_P1.get_current_turn()];//SPポイントにこれをかけたものをスコアに足して貪欲
 
-  std::vector<std::vector<std::vector<Choice<stage>>>> valid_choices = board_P1.get_valid_choices(true,deck,false);
   //カードはランダムに選ぶ
   int card_index = xorshift64()%4;
+  int card_id = deck[card_index];
 
-  int choice_SP_off_size = valid_choices[card_index][0].size();
-  int choice_SP_on_size = valid_choices[card_index][1].size();
+  std::vector<std::vector<Choice<stage>>> valid_choices = board_P1.get_valid_choices(true,card_id,false);
+
+  int choice_SP_off_size = valid_choices[0].size();
+  int choice_SP_on_size = valid_choices[1].size();
 
   //パス以外択がなかったらパス
   if(choice_SP_off_size == 0 && choice_SP_on_size == 0){
@@ -33,7 +35,7 @@ template<class stage> Choice<stage> AI_greedy2<stage>::get_action(const Board<st
 
   int max_score = INT_MIN;Choice<stage> best_choice({-1,-1,false});
   for(bool is_SP_attack:{false,true}){
-    for(Choice<stage> &choice:valid_choices[card_index][is_SP_attack]){
+    for(Choice<stage> &choice:valid_choices[is_SP_attack]){
       Board<stage> simulated_board_P1 = board_P1;
       simulated_board_P1.put_P1_card_without_validation(choice);
       int now_square_count_diff = simulated_board_P1.square_count_P1()-simulated_board_P1.square_count_P2();
