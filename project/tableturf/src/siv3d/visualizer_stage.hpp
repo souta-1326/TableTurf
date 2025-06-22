@@ -35,6 +35,7 @@ public:
   //lock_option=0:どちらも操作可能
   //lock_option=1:P1だけ操作可能
   //lock_option=2:P2だけ操作可能
+  //lock_option=3:どちらも操作不能
   static std::optional<std::pair<Choice<stage>,Choice<stage>>> visualize(short lock_option = 0);
 
   //映す盤面を決める
@@ -107,7 +108,7 @@ template<class stage> void Visualizer_Stage<stage>::show(const Board<stage> &boa
   static Font font2(30);
   font2(U"P1\n□:{}\nSP:{}"_fmt(board.square_P1.count(),board.SP_point_P1)).draw(20,20);
   font2(U"P2\n□:{}\nSP:{}"_fmt(board.square_P2.count(),board.SP_point_P2)).draw(655,20);
-  font2(U"Turn:{}/{}"_fmt(board.current_turn,Board<stage>::TURN_MAX)).draw(20,550);
+  font2(U"Turn:{}/{}"_fmt(board.get_current_turn(),Board<stage>::TURN_MAX)).draw(20,550);
 }
 template<class stage> std::optional<std::pair<Choice<stage>,Choice<stage>>> Visualizer_Stage<stage>::visualize(short lock_option){
   //まだboard_ptrが設定されていないなら何もしない
@@ -158,18 +159,36 @@ template<class stage> std::optional<std::pair<Choice<stage>,Choice<stage>>> Visu
   font(direction_text).draw(direction_button_pos_P2,Palette::Black);
   font(card_direction_P1).draw(80,300);
   font(card_direction_P2).draw(715,300);
-  //数値入力
-  static int *inputted_num = &card_id_P1;
-  if(lock_option == 2) inputted_num = &card_id_P2;
-  if(ID_button_P1.leftClicked() && lock_option != 2) inputted_num = &card_id_P1;
-  if(ID_button_P2.leftClicked() && lock_option != 1) inputted_num = &card_id_P2;
-  if(direction_button_P1.leftClicked() && lock_option != 2) inputted_num = &card_direction_P1;
-  if(direction_button_P2.leftClicked() && lock_option != 1) inputted_num = &card_direction_P2;
-  constexpr std::pair<Input,int> key_to_num[10] = {{Key0,0},{Key1,1},{Key2,2},{Key3,3},{Key4,4},{Key5,5},{Key6,6},{Key7,7},{Key8,8},{Key9,9}};
-  for(auto [key,num]:key_to_num){
-    if(key.down() && *inputted_num < 1000) *inputted_num = *inputted_num*10+num;
+  //数値入力(lock_option!=3)
+  if(lock_option != 3){
+    static int INPUT_UPPER_LIMIT = N_card;//入力値の上限値
+    static int *inputted_num = &card_id_P1;
+    if((inputted_num == &card_id_P1 || inputted_num == &card_direction_P1) && lock_option == 2) inputted_num = &card_id_P2;
+    if((inputted_num == &card_id_P2 || inputted_num == &card_direction_P2) && lock_option == 1) inputted_num = &card_id_P1;
+    if(ID_button_P1.leftClicked() && lock_option != 2){
+      inputted_num = &card_id_P1;
+      INPUT_UPPER_LIMIT = N_card;
+    }
+    if(ID_button_P2.leftClicked() && lock_option != 1){
+      inputted_num = &card_id_P2;
+      INPUT_UPPER_LIMIT = N_card;
+    }
+    if(direction_button_P1.leftClicked() && lock_option != 2){
+      inputted_num = &card_direction_P1;
+      INPUT_UPPER_LIMIT = 3;
+    }
+    if(direction_button_P2.leftClicked() && lock_option != 1){
+      inputted_num = &card_direction_P2;
+      INPUT_UPPER_LIMIT = 3;
+    }
+    constexpr std::pair<Input,int> key_to_num[10] = {{Key0,0},{Key1,1},{Key2,2},{Key3,3},{Key4,4},{Key5,5},{Key6,6},{Key7,7},{Key8,8},{Key9,9}};
+    for(auto [key,num]:key_to_num){
+      if(key.down() && *inputted_num*10+num <= INPUT_UPPER_LIMIT) *inputted_num = *inputted_num*10+num;
+    }
+    if(KeyBackspace.down()) *inputted_num /= 10;
+    if(KeyLeft.down() || KeyDown.down()) *inputted_num = std::max(*inputted_num-1,0);
+    if(KeyRight.down() || KeyUp.down()) *inputted_num = std::min(*inputted_num+1,INPUT_UPPER_LIMIT);
   }
-  if(KeyBackspace.down()) *inputted_num /= 10;
   //Positionボタンの描画
   const String position_text = U"Pos:";
   constexpr Vec2 position_button_pos_P1{20,350},position_button_pos_P2{655,350};
@@ -206,8 +225,8 @@ template<class stage> std::optional<std::pair<Choice<stage>,Choice<stage>>> Visu
   OK_button.draw(Palette::Yellow);
   font(OK_text).draw(OK_button_pos,Palette::Black);
   //それぞれの手が入力されているか(合法かどうかは考えない)
-  bool is_choice_filled_P1 = (card_id_P1 != 0 && card_direction_P1 != -1 && ((card_pos_H_P1 != -1 && card_pos_W_P1 != -1) || is_pass_P1 == 1));
-  bool is_choice_filled_P2 = (card_id_P2 != 0 && card_direction_P2 != -1 && ((card_pos_H_P2 != -1 && card_pos_W_P2 != -1) || is_pass_P2 == 1));
+  bool is_choice_filled_P1 = (card_id_P1 != 0 && ((card_direction_P1 != -1 && card_pos_H_P1 != -1 && card_pos_W_P1 != -1) || is_pass_P1 == 1));
+  bool is_choice_filled_P2 = (card_id_P2 != 0 && ((card_direction_P2 != -1 && card_pos_H_P2 != -1 && card_pos_W_P2 != -1) || is_pass_P2 == 1));
   //入力された手が合法か
   bool is_choice_valid_P1 = is_choice_filled_P1 && board.is_valid_placement(true,card_id_P1,card_direction_P1,card_pos_H_P1,card_pos_W_P1,is_pass_P1,is_SP_attack_P1);
   bool is_choice_valid_P2 = is_choice_filled_P2 && board.is_valid_placement(false,card_id_P2,card_direction_P2,card_pos_H_P2,card_pos_W_P2,is_pass_P2,is_SP_attack_P2);

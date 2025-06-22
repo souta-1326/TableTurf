@@ -51,41 +51,34 @@ void test2(){
   using stage = Main_Street;
   AI_random<stage> agent_P1,agent_P2;
   Deck deck_P1 = starter_deck,deck_P2 = starter_deck;
-  std::vector<Board<stage>> board = Battle<stage>(agent_P1,agent_P2,deck_P1,deck_P2);
+  std::vector<Board<stage>> board_log = Battle<stage>(agent_P1,agent_P2,deck_P1,deck_P2);
 
 
   Scene::SetBackground(Color{57,48,131});
   int current_turn = 0;
-  AsyncTask<int> task_input;
-  task_input = Async(read_turn);
-  Visualizer_Stage<stage>::set_board(board[current_turn]);
+  Visualizer_Stage<stage>::set_board(board_log[current_turn]);
   while(System::Update()){
     Visualizer_Stage<stage>::visualize();
-    if(task_input.isReady()){
-      current_turn = task_input.get();
-      Visualizer_Stage<stage>::set_board(board[current_turn]);
-      task_input = Async(read_turn);
-    }
+    if(KeyRight.down()) current_turn = std::min(current_turn+1,Board<stage>::TURN_MAX);
+    if(KeyLeft.down()) current_turn = std::max(current_turn-1,0);
+    Visualizer_Stage<stage>::set_board(board_log[current_turn]); 
   }
 }
 void test3(){
-  using stage = Thunder_Point;
-  AI_ISMCTS<stage> agent_P1(5000),agent_P2(5000);
-  Deck deck_P1 = starter_deck,deck_P2 = starter_deck;
-  std::vector<Board<stage>> board = Battle<stage>(agent_P1,agent_P2,deck_P1,deck_P2);
+  using stage = Main_Street;
+  AI_ISMCTS<stage> agent_P1(20000,0.001),agent_P2(20000,0.001);
+  Deck deck_P1 = test_deckset[0],deck_P2({38, 200, 183, 20, 72, 227, 188, 218, 170, 98, 120, 43, 29, 54, 165 });
+  std::vector<Board<stage>> board_log = Battle<stage>(agent_P1,agent_P2,deck_P1,deck_P2);
+
 
   Scene::SetBackground(Color{57,48,131});
   int current_turn = 0;
-  AsyncTask<int> task_input;
-  task_input = Async(read_turn);
-  Visualizer_Stage<stage>::set_board(board[current_turn]);
+  Visualizer_Stage<stage>::set_board(board_log[current_turn]);
   while(System::Update()){
     Visualizer_Stage<stage>::visualize();
-    if(task_input.isReady()){
-      current_turn = task_input.get();
-      Visualizer_Stage<stage>::set_board(board[current_turn]);
-      task_input = Async(read_turn);
-    }
+    if(KeyRight.down()) current_turn = std::min(current_turn+1,Board<stage>::TURN_MAX);
+    if(KeyLeft.down()) current_turn = std::max(current_turn-1,0);
+    Visualizer_Stage<stage>::set_board(board_log[current_turn]); 
   }
 }
 enum class Battle_Phase{
@@ -110,7 +103,7 @@ void battle_on_splatoon3(){
   Visualizer_Stage<stage>::set_board(board_P1);
 
   //AIを起動
-  AI_ISMCTS<stage> agent(10000);
+  AI_ISMCTS<stage> agent(20000,0.001);
   agent.set_deck_P1(my_deck);
   agent.set_deck_P2(opponent_deck);
 
@@ -137,23 +130,39 @@ void battle_on_splatoon3(){
       }
     }
     else if(current_phase == Battle_Phase::get_next_hand){
-      std::vector<int> next_card = Visualizer_Deck::visualize(my_deck);
-      if(next_card.size() == 1){
+      std::vector<int> next_cards = Visualizer_Deck::visualize(my_deck);
+      if(next_cards.size() == 1){
+        int next_card = next_cards[0];
         Visualizer_Deck::reset_is_clicked();
-        my_deck.choose_card_by_card_id(board_P1.used_cards_P1[current_turn-1],next_card[0]);
-        current_phase = Battle_Phase::think_action;
+        //next_cardが山札のカードなのか確かめる
+        std::vector<int> my_deck_stock = my_deck.get_stock();
+        if(std::count(my_deck_stock.begin(),my_deck_stock.end(),next_card) == 1){
+          my_deck.choose_card_by_card_id(board_P1.used_cards_P1[current_turn-1],next_card);
+          current_phase = Battle_Phase::think_action;
+        }
+        else{
+          std::cout << "INVALID: the card is not in stock" << std::endl;
+        }
       }
     }
     else if(current_phase == Battle_Phase::get_opponent_card){
-      std::vector<int> opponent_card = Visualizer_Deck::visualize(opponent_deck);
-      if(opponent_card.size() == 1){
+      std::vector<int> opponent_cards = Visualizer_Deck::visualize(opponent_deck);
+      if(opponent_cards.size() == 1){
+        int opponent_card = opponent_cards[0];
         Visualizer_Deck::reset_is_clicked();
-        Visualizer_Stage<stage>::set_P2_card(opponent_card[0]);
-        current_phase = Battle_Phase::get_opponent_action;
+        //opponent_cardがまだ使われていないカードなのか確かめる
+        std::vector<int> opponent_used_cards = board_P1.used_cards_P2;
+        if(std::count(opponent_used_cards.begin(),opponent_used_cards.end(),opponent_card) == 0){
+          Visualizer_Stage<stage>::set_P2_card(opponent_card);
+          current_phase = Battle_Phase::get_opponent_action;
+        }
+        else{
+          std::cout << "INVALID: the card is already used by opponent" << std::endl;
+        }
       }
     }
     else if(current_phase == Battle_Phase::get_opponent_action){
-      auto both_choice = Visualizer_Stage<stage>::visualize();
+      auto both_choice = Visualizer_Stage<stage>::visualize(2);
       //OKボタンが押されたら、つまりboard.current_turnが進んだらget_next_handに移行
       if(current_turn+1 == board_P1.current_turn){
         current_turn++;
@@ -190,29 +199,24 @@ void battle_on_splatoon3(){
     else if(current_phase == Battle_Phase::think_action){
       std::cout << "Now thinking..." << std::endl;
       Choice my_action = agent.get_action(board_P1,board_P2,my_deck);
-      std::cout << "CONTROL GAME SCREEN: put card like this then input OK to console" << std::endl;
+      std::cout << "CONTROL GAME SCREEN: put card like this then press O & K" << std::endl;
       Visualizer_Stage<stage>::set_P1_hand(my_action);
       current_phase = Battle_Phase::wait_putting_card;
-      Visualizer_Stage<stage>::visualize(2);
+      Visualizer_Stage<stage>::visualize(3);
     }
     else if(current_phase == Battle_Phase::wait_putting_card){
-      Visualizer_Stage<stage>::visualize(2);
-      std::string console_input;
-      std::cin >> console_input;
-      if(console_input == "OK" || console_input == "ok"){
+      Visualizer_Stage<stage>::visualize(3);
+      if(KeyO.down() && KeyK.down()){
         std::cout << "input opponent card" << std::endl;
         current_phase = Battle_Phase::get_opponent_card;
       }
     }
+    else if(current_phase == Battle_Phase::end){
+      break;
+    }
   }
 
-  //0ターン目(カードを引き直すか)
-  //カードのIDを入力する
-  std::cout << "Click your hand" << std::endl;
-
-  for(int i=0;i<4;i++){
-
-  }
+  
 }
 void test4(){
   Deck deck = starter_deck;
@@ -222,5 +226,8 @@ void test4(){
   }
 }
 void Main(){
-  battle_on_splatoon3();
+  Initializer initializer;
+  while(true){
+    battle_on_splatoon3();
+  }
 }

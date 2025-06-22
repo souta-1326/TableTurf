@@ -13,9 +13,6 @@ class Visualizer_Deck{
   static constexpr int space_size_btw_card = 5;//マスとマスの間の隙間
   static constexpr int space_size_btw_cell = 1;//マスとマスの間の隙間
 
-
-  //映し出す対象のデッキ
-  static Deck *deck_ptr;
   //カードを載せる長方形の設定
   static void squares_setting();
   static std::vector<Rect> squares_in_deck;
@@ -90,6 +87,10 @@ std::vector<int> Visualizer_Deck::visualize(const Deck &deck){
           now_color = color_normal_P1;
         }
         squares_in_card[i][j][k].draw(now_color);
+        //マス数、カードの名前を書く
+        static Font font16(16);
+        int w_index = i%5,h_index = i/5;
+        font16(Format(now_card.N_SQUARE)+U" "+Unicode::FromUTF16(now_card.NAME)).draw({w_index*rect_W_length,h_index*rect_H_length+square_size*Card::MAX_H,rect_W_length,rect_H_length-square_size*Card::MAX_H});
       }
     }
   }
