@@ -124,8 +124,8 @@ template<class stage> std::optional<std::pair<Choice<stage>,Choice<stage>>> Visu
   pass_button_P2.draw(is_pass_P2 ? Palette::Yellow:Palette::Gray);
   font(pass_text).draw(pass_button_pos_P1,Palette::Black);
   font(pass_text).draw(pass_button_pos_P2,Palette::Black);
-  if(pass_button_P1.leftClicked()) is_pass_P1 ^= 1;
-  if(pass_button_P2.leftClicked()) is_pass_P2 ^= 1;
+  if((lock_option == 0 || lock_option == 1) && pass_button_P1.leftClicked()) is_pass_P1 ^= 1;
+  if((lock_option == 0 || lock_option == 2) && pass_button_P2.leftClicked()) is_pass_P2 ^= 1;
   //Specialボタンの描画
   const String special_text = U"Special";
   constexpr Vec2 special_button_pos_P1{20,200},special_button_pos_P2{655,200};
@@ -135,8 +135,8 @@ template<class stage> std::optional<std::pair<Choice<stage>,Choice<stage>>> Visu
   special_button_P2.draw(is_SP_attack_P2 ? Palette::Yellow:Palette::Gray);
   font(special_text).draw(special_button_pos_P1,Palette::Black);
   font(special_text).draw(special_button_pos_P2,Palette::Black);
-  if(special_button_P1.leftClicked()) is_SP_attack_P1 ^= 1;
-  if(special_button_P2.leftClicked()) is_SP_attack_P2 ^= 1;
+  if((lock_option == 0 || lock_option == 1) && special_button_P1.leftClicked()) is_SP_attack_P1 ^= 1;
+  if((lock_option == 0 || lock_option == 2) && special_button_P2.leftClicked()) is_SP_attack_P2 ^= 1;
   //IDボタンの描画
   const String ID_text = U"ID:";
   constexpr Vec2 ID_button_pos_P1{20,250},ID_button_pos_P2{655,250};
@@ -148,17 +148,25 @@ template<class stage> std::optional<std::pair<Choice<stage>,Choice<stage>>> Visu
   font(ID_text).draw(ID_button_pos_P2,Palette::Black);
   font(card_id_P1).draw(60,250);
   font(card_id_P2).draw(695,250);
+  //カード名の描画
+  static Font font16(16);
+  if(1 <= card_id_P1 && card_id_P1 <= N_card){
+    font16(Unicode::FromUTF16(cards[card_id_P1].NAME)).draw(20,295);
+  }
+  if(1 <= card_id_P2 && card_id_P2 <= N_card){
+    font16(Unicode::FromUTF16(cards[card_id_P2].NAME)).draw(655,295);
+  }
   //Directionボタンの描画
   const String direction_text = U"Dir:";
-  constexpr Vec2 direction_button_pos_P1{20,300},direction_button_pos_P2{655,300};
+  constexpr Vec2 direction_button_pos_P1{20,320},direction_button_pos_P2{655,320};
   static RectF direction_button_P1 = font(direction_text).region(direction_button_pos_P1);
   static RectF direction_button_P2 = font(direction_text).region(direction_button_pos_P2);
   direction_button_P1.draw();
   direction_button_P2.draw();
   font(direction_text).draw(direction_button_pos_P1,Palette::Black);
   font(direction_text).draw(direction_button_pos_P2,Palette::Black);
-  font(card_direction_P1).draw(80,300);
-  font(card_direction_P2).draw(715,300);
+  font(card_direction_P1).draw(80,320);
+  font(card_direction_P2).draw(715,320);
   //数値入力(lock_option!=3)
   if(lock_option != 3){
     static int INPUT_UPPER_LIMIT = N_card;//入力値の上限値
@@ -191,30 +199,32 @@ template<class stage> std::optional<std::pair<Choice<stage>,Choice<stage>>> Visu
   }
   //Positionボタンの描画
   const String position_text = U"Pos:";
-  constexpr Vec2 position_button_pos_P1{20,350},position_button_pos_P2{655,350};
+  constexpr Vec2 position_button_pos_P1{20,370},position_button_pos_P2{655,370};
   static RectF position_button_P1 = font(position_text).region(position_button_pos_P1);
   static RectF position_button_P2 = font(position_text).region(position_button_pos_P2);
   position_button_P1.draw();
   position_button_P2.draw();
   font(position_text).draw(position_button_pos_P1,Palette::Black);
   font(position_text).draw(position_button_pos_P2,Palette::Black);
-  font(U"{} {}"_fmt(card_pos_H_P1,card_pos_W_P1)).draw(80,350);
-  font(U"{} {}"_fmt(card_pos_H_P2,card_pos_W_P2)).draw(715,350);
+  font(U"{} {}"_fmt(card_pos_H_P1,card_pos_W_P1)).draw(80,370);
+  font(U"{} {}"_fmt(card_pos_H_P2,card_pos_W_P2)).draw(715,370);
   //Position入力
   static int *inputted_H = &card_pos_H_P1,*inputted_W = &card_pos_W_P1;
-  if(lock_option == 2){
-    inputted_H = &card_pos_H_P2;inputted_W = &card_pos_W_P2;
-  }
-  if(position_button_P1.leftPressed() && lock_option != 2){
-    inputted_H = &card_pos_H_P1;inputted_W = &card_pos_W_P1;
-  }
-  if(position_button_P2.leftPressed() && lock_option != 1){
-    inputted_H = &card_pos_H_P2;inputted_W = &card_pos_W_P2;
-  }
-  for(int i=0;i<stage::h;i++){
-    for(int j=0;j<stage::w;j++){
-      if(squares[i][j].leftClicked()){
-        *inputted_H = i;*inputted_W = j;
+  if(lock_option != 3){
+    if(lock_option == 2){
+      inputted_H = &card_pos_H_P2;inputted_W = &card_pos_W_P2;
+    }
+    if(position_button_P1.leftPressed() && lock_option != 2){
+      inputted_H = &card_pos_H_P1;inputted_W = &card_pos_W_P1;
+    }
+    if(position_button_P2.leftPressed() && lock_option != 1){
+      inputted_H = &card_pos_H_P2;inputted_W = &card_pos_W_P2;
+    }
+    for(int i=0;i<stage::h;i++){
+      for(int j=0;j<stage::w;j++){
+        if(squares[i][j].leftClicked()){
+          *inputted_H = i;*inputted_W = j;
+        }
       }
     }
   }
@@ -247,8 +257,8 @@ template<class stage> std::optional<std::pair<Choice<stage>,Choice<stage>>> Visu
     return ret_choices;
   }
   //合法でない方の手に「Invalid」を表示する
-  if(is_choice_filled_P1 && !is_choice_valid_P1) font(U"Invalid").draw(20,400);
-  if(is_choice_filled_P2 && !is_choice_valid_P2) font(U"Invalid").draw(655,400);
+  if(is_choice_filled_P1 && !is_choice_valid_P1) font(U"Invalid").draw(20,420);
+  if(is_choice_filled_P2 && !is_choice_valid_P2) font(U"Invalid").draw(655,420);
   //それぞれ、合法手の場合置いた時の盤面を表示する
   static Board<stage> virtual_board;
   virtual_board = board;
