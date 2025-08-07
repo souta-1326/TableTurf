@@ -103,7 +103,6 @@ class AlphaZeroResNet_CPP(nn.Module):
     return torch.cat(self.model.forward(x),dim=1)
 
 def main():
-  H,W=26,9
   model = AlphaZeroResNet(H,W,n_blocks=19).to("mps")
   print(sum(p.numel() for p in model.parameters() if p.requires_grad))
   dummy_input = torch.rand(64,INPUT_C,H,W).to("mps")
