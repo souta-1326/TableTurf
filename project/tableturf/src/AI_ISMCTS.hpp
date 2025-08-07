@@ -11,7 +11,7 @@
 #include "deck.hpp"
 #include "hash.hpp"
 #include "xorshift64.hpp"
-//常に手札からランダムに選んでパスするAI
+
 template<class stage> class AI_ISMCTS : public Agent<stage>{
  private:
   //MCTSの設定
@@ -77,15 +77,16 @@ template<class stage> class AI_ISMCTS : public Agent<stage>{
   
   //simulate,evaluation,expansion,backupをする
   void simulate();
+
+  void set_root(const Board<stage> &board_P1,const Board<stage> &board_P2,const Deck &deck);
  public:
   AI_ISMCTS(int num_simulations,float diff_bonus=0,Choice<stage>(*evaluator)(const Board<stage>&,const Board<stage>&,const Deck&)=get_action_greedy<stage>,bool logging=false);
   bool redraw(const Deck &deck) override;
   void set_deck_P1(const Deck &deck_P1) override;
   void set_deck_P2(const Deck &deck_P2) override;
   Choice<stage> get_action(const Board<stage> &board_P1,const Board<stage> &board_P2,const Deck &deck) override;
-  
-  void set_root(const Board<stage> &board_P1,const Board<stage> &board_P2,const Deck &deck);
 };
+
 template<class stage> AI_ISMCTS<stage>::AI_ISMCTS(int num_simulations,float diff_bonus,Choice<stage>(*evaluator)(const Board<stage>&,const Board<stage>&,const Deck&),bool logging):
 num_simulations(num_simulations),diff_bonus(diff_bonus),evaluator(evaluator),logging(logging),
 valid_actions_start_index_P1(N_card+1,std::vector<int>(2,-1)),valid_actions_start_index_P2(N_card+1,std::vector<int>(2,-1)){
