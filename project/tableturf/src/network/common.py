@@ -1,4 +1,3 @@
-N_CARD = 232
-STAGE = "Main Street"
+N_CARD = 266
 H = 26
 W = 9
