@@ -6,7 +6,7 @@
 #include "choice.hpp"
 #include "deck.hpp"
 #include "xorshift64.hpp"
-//常に手札からランダムに選んでパスするAI
+
 template<class stage> class AI_greedy2 : public Agent<stage>{
  public:
   AI_greedy2(){};
