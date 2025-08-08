@@ -4,10 +4,10 @@ project(starter_deck_selfplay)
 project(test_map_elites)
 project(deck_exam)
 
-# list(APPEND CMAKE_PREFIX_PATH /usr/local/lib/python3.8/dist-packages/torch/share/cmake) #libtorchのパスを入力
-# list(APPEND CMAKE_PREFIX_PATH /Users/souta/Documents/libtorch)
-# find_package(Torch REQUIRED)
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
+list(APPEND CMAKE_PREFIX_PATH /usr/local/lib/python3.8/dist-packages/torch/share/cmake) #libtorchのパスを入力
+list(APPEND CMAKE_PREFIX_PATH /Users/souta/Documents/libtorch)
+find_package(Torch REQUIRED)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
 
 # # TensorRT
 # set(TENSORRT_INCLUDE /TensorRT-8.5.1/include)
