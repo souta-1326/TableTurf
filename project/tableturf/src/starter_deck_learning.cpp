@@ -44,7 +44,7 @@ c10::Device device,c10::ScalarType dtype){
     assert(num_games_in_testplay%num_games_in_parallel == 0);
     float sum_win_rate = 0;
     for(int i=0;i<num_testplay_func;i++){
-      sum_win_rate += testplay<stage>(num_games_in_parallel,num_threads_each_gpu,model,device,dtype,PV_ISMCTS_num_simulations,simple_ISMCTS_num_simulations,diff_bonus,std::vector<Deck>(num_games_in_parallel),std::vector<Deck>(num_games_in_parallel));
+      sum_win_rate += testplay<stage>(num_games_in_parallel,num_threads_each_gpu,model,device,dtype,PV_ISMCTS_num_simulations,simple_ISMCTS_num_simulations,diff_bonus,std::vector<Deck>(num_games_in_parallel,starter_deck),std::vector<Deck>(num_games_in_parallel,starter_deck));
     }
     float win_rate = sum_win_rate/num_testplay_func;
     o_mutex.lock();
@@ -60,7 +60,7 @@ c10::Device device,c10::ScalarType dtype){
   num_games_in_selfplay_run += num_games_in_parallel;
   selfplay_count_mutex.unlock();
   while(true){
-    selfplay<stage>(num_games_in_parallel,num_threads_each_gpu,model,device,dtype,PV_ISMCTS_num_simulations,dirichlet_alpha,eps,diff_bonus,std::vector<Deck>(num_games_in_parallel),std::vector<Deck>(num_games_in_parallel),buffer);
+    selfplay<stage>(num_games_in_parallel,num_threads_each_gpu,model,device,dtype,PV_ISMCTS_num_simulations,dirichlet_alpha,eps,diff_bonus,std::vector<Deck>(num_games_in_parallel,starter_deck),std::vector<Deck>(num_games_in_parallel,starter_deck),buffer);
     bool break_loop = false;
     selfplay_count_mutex.lock();
     num_games_in_selfplay_done += num_games_in_parallel;
