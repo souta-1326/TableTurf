@@ -46,12 +46,17 @@ class AlphaZeroResNet(nn.Module):
     self.blocks = nn.Sequential(*[ResBlock(filters,use_bias) for _ in range(n_blocks)])
 
     #: policy (action) head
-    self.conv_p_action_put = nn.Conv2d(filters,N_CARD*8,kernel_size=1,bias=True)
-    self.conv_p_action_pass = nn.Conv2d(filters,2,kernel_size=1,bias=use_bias)
-    self.bn_p_action_pass = nn.BatchNorm2d(2)
-    self.logits_action_pass = nn.Linear(2*H*W,N_CARD)
-    self.flat_p_action_pass = nn.Flatten()
+    # self.conv_p_action_put = nn.Conv2d(filters,N_CARD*8,kernel_size=1,bias=True)
+    # self.conv_p_action_pass = nn.Conv2d(filters,2,kernel_size=1,bias=use_bias)
+    # self.bn_p_action_pass = nn.BatchNorm2d(2)
+    # self.logits_action_pass = nn.Linear(2*H*W,N_CARD)
+    # self.flat_p_action_pass = nn.Flatten()
+    # self.flat_p_action = nn.Flatten()
+
+    self.conv_p_action = nn.Conv2d(filters,2,kernel_size=1, bias=True)
+    self.bn_p_action = nn.BatchNorm2d(2)
     self.flat_p_action = nn.Flatten()
+    self.fc_p_action = nn.Linear(2*H*W,N_CARD*ACTION_SPACE_OF_EACH_CARD)
 
     #: policy (redraw) head
     self.conv_p_redraw = nn.Conv2d(filters,4,kernel_size=1,bias=use_bias)
@@ -75,12 +80,16 @@ class AlphaZeroResNet(nn.Module):
     # x_p_action = F.relu(self.bn_p_action(self.conv_p_action(x)))
     # x_p_action = self.flat_p_action(x_p_action)
     # logits_action = self.logits_action(x_p_action)
-    x_p_action_put = self.conv_p_action_put(x).view(-1,N_CARD,8*H*W)
-    x_p_action_pass = self.flat_p_action_pass(self.bn_p_action_pass(self.conv_p_action_pass(x)))
-    x_p_action_pass = F.relu(self.logits_action_pass(x_p_action_pass)).view(-1,N_CARD,1)
-    x_p_action = torch.cat((x_p_action_pass,x_p_action_put),dim=2)
-    logits_action = self.flat_p_action(x_p_action)
 
+    # x_p_action_put = self.conv_p_action_put(x).view(-1,N_CARD,8*H*W)
+    # x_p_action_pass = self.flat_p_action_pass(self.bn_p_action_pass(self.conv_p_action_pass(x)))
+    # x_p_action_pass = F.relu(self.logits_action_pass(x_p_action_pass)).view(-1,N_CARD,1)
+    # x_p_action = torch.cat((x_p_action_pass,x_p_action_put),dim=2)
+    # logits_action = self.flat_p_action(x_p_action)
+
+    x_p_action = F.relu(self.bn_p_action(self.conv_p_action(x)))
+    x_p_action = self.flat_p_action(x_p_action)
+    logits_action = self.fc_p_action(x_p_action)
 
     #: policy (redraw) head
     x_p_redraw = F.relu(self.bn_p_redraw(self.conv_p_redraw(x)))
@@ -103,7 +112,7 @@ class AlphaZeroResNet_CPP(nn.Module):
     return torch.cat(self.model.forward(x),dim=1)
 
 def main():
-  model = AlphaZeroResNet(H,W,n_blocks=19).to("mps")
+  model = AlphaZeroResNet(H,W,n_blocks=3,filters=256).to("mps")
   print(sum(p.numel() for p in model.parameters() if p.requires_grad))
   dummy_input = torch.rand(64,INPUT_C,H,W).to("mps")
   torch.mps.synchronize()
