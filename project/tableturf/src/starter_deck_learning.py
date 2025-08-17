@@ -171,13 +171,25 @@ def main(current_model_path:str):
     create_model_cpp(current_model_path)
 
     # testplay & selfplay を開始
-    num_cpus_for_selfplay = num_cpus*(num_gpus-1)//num_gpus
-    num_gpus_for_selfplay = num_gpus-1
+    # num_cpus_for_selfplay = num_cpus*(num_gpus-1)//num_gpus selfplayと学習を同時に行うときはこれ
+    # num_gpus_for_selfplay = num_gpus-1 selfplayと学習を同時に行うときはこれ
+    num_cpus_for_selfplay = num_cpus
+    num_gpus_for_selfplay = num_gpus
     command = f"{starter_deck_selfplay_program} {num_cpus_for_selfplay} {num_gpus_for_selfplay} {device} {num_games_in_parallel} {num_games_in_selfplay} {num_games_in_testplay} {buffer_size} {PV_ISMCTS_num_simulations} {simple_ISMCTS_num_simulations} {diff_bonus} {dirichlet_alpha} {eps} {model_cpp_path} {data_path} {log_path}"
     print(command)
     proc = subprocess.Popen(command,shell=True)
 
-    # その間に1つのGPUで学習
+    # selfplay が終了
+    proc.wait()
+    assert proc.returncode == 0
+    print("selfplay done")
+
+    # train_dataに selfplay で得られたデータを追加
+    train_data.add(data_path,buffer_size)
+    with open(dataset_path,"wb") as file:
+      pickle.dump(train_data,file)
+
+    # GPUで学習
     print("dataset size:",len(train_data))
     print("step count:",step_count)
     learning_rate = get_learning_rate(step_count)
@@ -190,7 +202,8 @@ def main(current_model_path:str):
       save_model_path = generate_model_path()
       if device=="cuda":
         # mp.spawn(train_DDP,args=(current_model_path,save_model_path,learning_rate),nprocs=num_gpus,join=True)
-        learning_gpu_id = num_gpus-1
+        # learning_gpu_id = num_gpus-1 selfplayと学習を同時に行うときはこれ
+        learning_gpu_id = 0
         train_cuda(current_model_path,save_model_path,learning_gpu_id,learning_rate)
         torch.cuda.synchronize()
       else:
@@ -204,16 +217,6 @@ def main(current_model_path:str):
         pickle.dump(step_count,file)
       with open(log_path,"a") as log_f:
         print(f"learn time: {end_learn_time-start_learn_time:.3f}",file=log_f)
-    
-    # selfplay が終了
-    proc.wait()
-    assert proc.returncode == 0
-    print("selfplay done")
-
-    # train_dataに selfplay で得られたデータを追加
-    train_data.add(data_path,buffer_size)
-    with open(dataset_path,"wb") as file:
-      pickle.dump(train_data,file)
 
   
 if __name__ == "__main__":
