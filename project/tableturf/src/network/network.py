@@ -53,7 +53,7 @@ class AlphaZeroResNet(nn.Module):
     # self.flat_p_action_pass = nn.Flatten()
     # self.flat_p_action = nn.Flatten()
 
-    self.conv_p_action = nn.Conv2d(filters,2,kernel_size=1, bias=True)
+    self.conv_p_action = nn.Conv2d(filters,2,kernel_size=1,bias=use_bias)
     self.bn_p_action = nn.BatchNorm2d(2)
     self.flat_p_action = nn.Flatten()
     self.fc_p_action = nn.Linear(2*H*W,N_CARD*ACTION_SPACE_OF_EACH_CARD)
