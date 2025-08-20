@@ -163,30 +163,32 @@ template<class stage> std::vector<std::pair<Choice<stage>,float>> construct_poli
   for(const auto &[choice,policy]:policy_action_AI){
     assert(is_in_hand[choice.card_id]);
     //1. policy_action_AIの総和は1なので、各policyにsum_of_policy_action_network_in_handを掛ける
-    //2. sum_of_policy_action_network_in_deckで割る
-    policy_action_for_learning.emplace_back(choice,policy*sum_of_policy_action_network_in_hand/sum_of_policy_action_network_in_deck);
+    //2. sum_of_policy_action_network_in_deckで割る ← それをしません
+    // policy_action_for_learning.emplace_back(choice,policy*sum_of_policy_action_network_in_hand/sum_of_policy_action_network_in_deck);
+    policy_action_for_learning.emplace_back(choice,policy*sum_of_policy_action_network_in_hand);
   }
-  for(const auto &[choice,policy]:policy_action_network){
-    if(is_in_hand[choice.card_id]) continue;
-    //2. sum_of_policy_action_network_in_deckで割る
-    policy_action_for_learning.emplace_back(choice,policy/sum_of_policy_action_network_in_deck);
-  }
+  // for(const auto &[choice,policy]:policy_action_network){
+  //   if(is_in_hand[choice.card_id]) continue;
+  //   //2. sum_of_policy_action_network_in_deckで割る
+  //   policy_action_for_learning.emplace_back(choice,policy/sum_of_policy_action_network_in_deck);
+  // }
   return policy_action_for_learning;
 }
 //こっちはpolicy_action_networkだけを見る(redraw用)
 template<class stage> std::vector<std::pair<Choice<stage>,float>> construct_policy_action_for_learning
 (const std::vector<std::pair<Choice<stage>,float>> &policy_action_network){
-  //事前準備
-  float sum_of_policy_action_network_in_deck = 0;
-  for(const auto &[choice,policy]:policy_action_network){
-    sum_of_policy_action_network_in_deck += policy;
-  }
+  return {};
+  // //事前準備
+  // float sum_of_policy_action_network_in_deck = 0;
+  // for(const auto &[choice,policy]:policy_action_network){
+  //   sum_of_policy_action_network_in_deck += policy;
+  // }
 
-  std::vector<std::pair<Choice<stage>,float>> policy_action_for_learning;
-  policy_action_for_learning.reserve(policy_action_network.size());
-  for(const auto &[choice,policy]:policy_action_network){
-    //2. sum_of_policy_action_network_in_deckで割る
-    policy_action_for_learning.emplace_back(choice,policy/sum_of_policy_action_network_in_deck);
-  }
-  return policy_action_for_learning;
+  // std::vector<std::pair<Choice<stage>,float>> policy_action_for_learning;
+  // policy_action_for_learning.reserve(policy_action_network.size());
+  // for(const auto &[choice,policy]:policy_action_network){
+  //   //2. sum_of_policy_action_network_in_deckで割る
+  //   policy_action_for_learning.emplace_back(choice,policy/sum_of_policy_action_network_in_deck);
+  // }
+  // return policy_action_for_learning;
 }
