@@ -197,7 +197,7 @@ template<class stage> std::tuple<int,int,int,Board<stage>,Board<stage>,Deck,Deck
       if(is_redraw_node(now_pos)){
         for(int i=0;i<W.size();i++){
           //not_redraw(i==0)を1回探索してもらわないと困るので、redrawの時に限ってN[i]==0のときは優先して探索
-          float now_PUCB_score = (N[i]==0 ? 1e9:PUCB_score(W[i],N[i],n_parent,P[i]));
+          float now_PUCB_score = (N[i]==0 ? 1e9:PUCB_score(W[i],N[i],n_parent+1,P[i]));
           if(max_PUCB_score < now_PUCB_score){
             max_PUCB_score = now_PUCB_score;
             chosen_index = i;
@@ -236,7 +236,7 @@ template<class stage> std::tuple<int,int,int,Board<stage>,Board<stage>,Deck,Deck
             //rootなら、Pにディリクレノイズを足す
             bool add_dirichlet_noise_now = (add_dirichlet_noise && is_placement_P1 && now_pos == root_pos);
             float current_P = (add_dirichlet_noise_now ? P[now_index]/sum_valid_policy*(1-eps)+noises[now_index]*eps:P[now_index]/sum_valid_policy);
-            float now_PUCB_score = PUCB_score(W[now_index],N[now_index],n_parent,current_P);
+            float now_PUCB_score = PUCB_score(W[now_index],N[now_index],n_parent+1,current_P);
             if(max_PUCB_score < now_PUCB_score){
               max_PUCB_score = now_PUCB_score;
               chosen_index = now_index;
