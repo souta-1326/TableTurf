@@ -173,7 +173,7 @@ template<class stage> void Buffer<stage>::write(std::string file_name,bool keep_
     }
     //policy_redraw
     {
-    if(policy_redraw.size() == 0) fout << 0.5 << ' ' << 0.5 << '\n';
+    if(policy_redraw.size() == 0) fout << 0 << ' ' << 0 << '\n';
     else fout << policy_redraw[0] << ' ' << policy_redraw[1] << '\n';
     }
     //value
