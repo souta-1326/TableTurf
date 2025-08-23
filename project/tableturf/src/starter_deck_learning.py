@@ -1,5 +1,6 @@
 import torch
 from torch import nn,optim
+import torch.nn.functional as F
 import time
 import subprocess
 import sys
@@ -19,11 +20,14 @@ from torch.utils.data.distributed import DistributedSampler
 
 from config import*
 
+loss_policy_action_weight = 1
+
 def train_mps(load_model_path:str,save_model_path:str,learning_rate):
+  global loss_policy_action_weight
   model = load_model(load_model_path)
   # define loss function and optimizer
-  loss_fn_policy_action = nn.CrossEntropyLoss()
-  loss_fn_policy_redraw = nn.CrossEntropyLoss()
+  loss_fn_policy_action = nn.KLDivLoss(reduction='batchmean')
+  loss_fn_policy_redraw = nn.KLDivLoss(reduction='batchmean')
   loss_fn_value = nn.MSELoss()
   optimizer = optim.SGD(model.parameters(),lr=learning_rate,weight_decay=1e-4)
   
@@ -34,6 +38,9 @@ def train_mps(load_model_path:str,save_model_path:str,learning_rate):
 
   for _ in range(n_epochs):
     with tqdm(enumerate(dataloader),total=len(dataloader)) as pbar_loss:
+      loss_policy_action_sum = 0
+      loss_policy_redraw_sum = 0
+      loss_value_sum = 0
       for i,(data,label_policy_action,label_policy_redraw,label_value) in pbar_loss:
         data = data.to(device)
         label_policy_action = label_policy_action.to(device)
@@ -44,17 +51,20 @@ def train_mps(load_model_path:str,save_model_path:str,learning_rate):
         # forward
         output_policy_action,output_policy_redraw,output_value = model(data)
         # compute loss
-        loss_policy_action = loss_fn_policy_action(output_policy_action,label_policy_action)
-        loss_policy_redraw = loss_fn_policy_redraw(output_policy_redraw,label_policy_redraw)
+        loss_policy_action = loss_fn_policy_action(F.log_softmax(output_policy_action,dim=1),label_policy_action)
+        loss_policy_redraw = loss_fn_policy_redraw(F.log_softmax(output_policy_redraw,dim=1),label_policy_redraw)
         loss_value = loss_fn_value(output_value,label_value)
+        loss_policy_action_sum += loss_policy_action
+        loss_policy_redraw_sum += loss_policy_redraw
+        loss_value_sum += loss_value
         # backward
-        (loss_policy_action+loss_policy_redraw+loss_value).backward()
+        (loss_policy_action*loss_policy_action_weight+loss_policy_redraw+loss_value).backward()
         # update parameters
         optimizer.step()
-        if i==0:
-          print(f"loss_policy_action:{loss_policy_action:.3f}")
-          print(f"loss_policy_redraw:{loss_policy_redraw:.3f}")
-          print(f"loss_value:{loss_value:.3f}")
+      print(f"loss_policy_action:{loss_policy_action_sum/len(pbar_loss):.6f}")
+      print(f"loss_policy_redraw:{loss_policy_redraw_sum/len(pbar_loss):.6f}")
+      print(f"loss_value:{loss_value_sum/len(pbar_loss):.3f}")
+      loss_policy_action_weight = float(loss_value_sum/loss_policy_action_sum)
   
   save_model(model,save_model_path)
   
@@ -63,8 +73,8 @@ def train_cuda(load_model_path:str,save_model_path:str,gpu_id:int,learning_rate:
   # load model
   model = load_model(load_model_path).to(gpu_id)
   # define loss function and optimizer
-  loss_fn_policy_action = nn.CrossEntropyLoss()
-  loss_fn_policy_redraw = nn.CrossEntropyLoss()
+  loss_fn_policy_action = nn.KLDivLoss(reduction='batchmean')
+  loss_fn_policy_redraw = nn.KLDivLoss(reduction='batchmean')
   loss_fn_value = nn.MSELoss()
   optimizer = optim.SGD(model.parameters(),lr=learning_rate,weight_decay=1e-4)
   # create dataloader
@@ -87,8 +97,8 @@ def train_cuda(load_model_path:str,save_model_path:str,gpu_id:int,learning_rate:
           # forward
           output_policy_action,output_policy_redraw,output_value = model(data)
           # compute loss
-          loss_policy_action = loss_fn_policy_action(output_policy_action,label_policy_action)
-          loss_policy_redraw = loss_fn_policy_redraw(output_policy_redraw,label_policy_redraw)
+          loss_policy_action = loss_fn_policy_action(F.log_softmax(output_policy_action,dim=1),label_policy_action)
+          loss_policy_redraw = loss_fn_policy_redraw(F.log_softmax(output_policy_redraw,dim=1),label_policy_redraw)
           loss_value = loss_fn_value(output_value,label_value)
         # backward
         scaler.scale(loss_policy_action+loss_policy_redraw+loss_value).backward()
@@ -97,8 +107,8 @@ def train_cuda(load_model_path:str,save_model_path:str,gpu_id:int,learning_rate:
         # update the scaler
         scaler.update()
         if i==0:
-          print(f"loss_policy_action:{loss_policy_action:.3f}")
-          print(f"loss_policy_redraw:{loss_policy_redraw:.3f}")
+          print(f"loss_policy_action:{loss_policy_action:.6f}")
+          print(f"loss_policy_redraw:{loss_policy_redraw:.6f}")
           print(f"loss_value:{loss_value:.3f}")
   
   # update current model
@@ -113,8 +123,8 @@ def train_DDP(rank,load_model_path:str,save_model_path:str,learning_rate):
   # construct DDP model
   model_DDP = DDP(model,device_ids=[rank])
   # define loss function and optimizer
-  loss_fn_policy_action = nn.CrossEntropyLoss()
-  loss_fn_policy_redraw = nn.CrossEntropyLoss()
+  loss_fn_policy_action = nn.KLDivLoss(reduction='batchmean')
+  loss_fn_policy_redraw = nn.KLDivLoss(reduction='batchmean')
   loss_fn_value = nn.MSELoss()
   optimizer = optim.SGD(model_DDP.parameters(),lr=learning_rate,weight_decay=1e-4)
   # create dataloader
@@ -138,8 +148,8 @@ def train_DDP(rank,load_model_path:str,save_model_path:str,learning_rate):
           # forward
           output_policy_action,output_policy_redraw,output_value = model_DDP(data)
           # compute loss
-          loss_policy_action = loss_fn_policy_action(output_policy_action,label_policy_action)
-          loss_policy_redraw = loss_fn_policy_redraw(output_policy_redraw,label_policy_redraw)
+          loss_policy_action = loss_fn_policy_action(F.log_softmax(output_policy_action,dim=1),label_policy_action)
+          loss_policy_redraw = loss_fn_policy_redraw(F.log_softmax(output_policy_redraw,dim=1),label_policy_redraw)
           loss_value = loss_fn_value(output_value,label_value)
         # backward
         scaler.scale(loss_policy_action+loss_policy_redraw+loss_value).backward()
@@ -148,8 +158,8 @@ def train_DDP(rank,load_model_path:str,save_model_path:str,learning_rate):
         # update the scaler
         scaler.update()
         if rank==0 and i==0:
-          print(f"loss_policy_action:{loss_policy_action:.3f}")
-          print(f"loss_policy_redraw:{loss_policy_redraw:.3f}")
+          print(f"loss_policy_action:{loss_policy_action:.6f}")
+          print(f"loss_policy_redraw:{loss_policy_redraw:.6f}")
           print(f"loss_value:{loss_value:.3f}")
   
   dist.barrier()
@@ -166,28 +176,28 @@ def main(current_model_path:str):
     step_count = pickle.load(file)
 
   # training loop
-  for i in range(num_games_overall//num_games_in_selfplay):
+  while True:
     # C++用のモデル(policyとvalueが一体化)を作成
     create_model_cpp(current_model_path)
 
     # testplay & selfplay を開始
     # num_cpus_for_selfplay = num_cpus*(num_gpus-1)//num_gpus selfplayと学習を同時に行うときはこれ
     # num_gpus_for_selfplay = num_gpus-1 selfplayと学習を同時に行うときはこれ
-    num_cpus_for_selfplay = num_cpus
-    num_gpus_for_selfplay = num_gpus
-    command = f"{starter_deck_selfplay_program} {num_cpus_for_selfplay} {num_gpus_for_selfplay} {device} {num_games_in_parallel} {num_games_in_selfplay} {num_games_in_testplay} {buffer_size} {PV_ISMCTS_num_simulations} {simple_ISMCTS_num_simulations} {diff_bonus} {dirichlet_alpha} {eps} {model_cpp_path} {data_path} {log_path}"
-    print(command)
-    proc = subprocess.Popen(command,shell=True)
+    # num_cpus_for_selfplay = num_cpus
+    # num_gpus_for_selfplay = num_gpus
+    # command = f"{starter_deck_selfplay_program} {num_cpus_for_selfplay} {num_gpus_for_selfplay} {device} {num_games_in_parallel} {num_games_in_selfplay} {num_games_in_testplay} {buffer_size} {PV_ISMCTS_num_simulations} {simple_ISMCTS_num_simulations} {diff_bonus} {dirichlet_alpha} {eps} {model_cpp_path} {data_path} {log_path}"
+    # print(command)
+    # proc = subprocess.Popen(command,shell=True)
 
-    # selfplay が終了
-    proc.wait()
-    assert proc.returncode == 0
-    print("selfplay done")
+    # # selfplay が終了
+    # proc.wait()
+    # assert proc.returncode == 0
+    # print("selfplay done")
 
-    # train_dataに selfplay で得られたデータを追加
-    train_data.add(data_path,buffer_size)
-    with open(dataset_path,"wb") as file:
-      pickle.dump(train_data,file)
+    # # train_dataに selfplay で得られたデータを追加
+    # train_data.add(data_path,buffer_size)
+    # with open(dataset_path,"wb") as file:
+    #   pickle.dump(train_data,file)
 
     # GPUで学習
     print("dataset size:",len(train_data))
