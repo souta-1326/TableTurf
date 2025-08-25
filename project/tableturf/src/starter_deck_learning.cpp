@@ -59,18 +59,20 @@ c10::Device device,c10::ScalarType dtype){
   selfplay_count_mutex.lock();
   num_games_in_selfplay_run += num_games_in_parallel;
   selfplay_count_mutex.unlock();
-  while(true){
-    selfplay<stage>(num_games_in_parallel,num_threads_each_gpu,model,device,dtype,PV_ISMCTS_num_simulations,dirichlet_alpha,eps,diff_bonus,std::vector<Deck>(num_games_in_parallel,starter_deck),std::vector<Deck>(num_games_in_parallel,starter_deck),buffer);
-    bool break_loop = false;
-    selfplay_count_mutex.lock();
-    num_games_in_selfplay_done += num_games_in_parallel;
-    o_mutex.lock();
-    std::cerr << "Selfplay loop:" << num_games_in_selfplay_done << std::endl;
-    o_mutex.unlock();
-    if(num_games_in_selfplay_run >= num_games_in_selfplay) break_loop = true;
-    else num_games_in_selfplay_run += num_games_in_parallel;
-    selfplay_count_mutex.unlock();
-    if(break_loop) break;
+  if(num_games_in_selfplay){
+    while(true){
+      selfplay<stage>(num_games_in_parallel,num_threads_each_gpu,model,device,dtype,PV_ISMCTS_num_simulations,dirichlet_alpha,eps,diff_bonus,std::vector<Deck>(num_games_in_parallel,starter_deck),std::vector<Deck>(num_games_in_parallel,starter_deck),buffer);
+      bool break_loop = false;
+      selfplay_count_mutex.lock();
+      num_games_in_selfplay_done += num_games_in_parallel;
+      o_mutex.lock();
+      std::cerr << "Selfplay loop:" << num_games_in_selfplay_done << std::endl;
+      o_mutex.unlock();
+      if(num_games_in_selfplay_run >= num_games_in_selfplay) break_loop = true;
+      else num_games_in_selfplay_run += num_games_in_parallel;
+      selfplay_count_mutex.unlock();
+      if(break_loop) break;
+    }
   }
   o_mutex.lock();
   log_out << gpu_id << ":selfplay time: " << timer.get_time() << std::endl;
